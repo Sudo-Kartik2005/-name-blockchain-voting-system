@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block title %}{{ election.title }} - Blockchain Voting System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('elections') }}">Elections</a></li>
+                <li class="breadcrumb-item active">{{ election.title }}</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-poll me-2"></i>{{ election.title }}
+                </h4>
+            </div>
+            <div class="card-body">
+                {% if election.description %}
+                    <p class="lead">{{ election.description }}</p>
+                {% endif %}
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-calendar-start text-primary me-2"></i>
+                            <strong>Start Date:</strong>
+                            <span class="ms-2">{{ election.start_date.strftime('%B %d, %Y at %I:%M %p') }}</span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="fas fa-calendar-end text-primary me-2"></i>
+                            <strong>End Date:</strong>
+                            <span class="ms-2">{{ election.end_date.strftime('%B %d, %Y at %I:%M %p') }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Status:</strong>
+                    {% if election.is_open %}
+                        <span class="badge bg-success">Open for Voting</span>
+                    {% elif election.start_date > now %}
+                        <span class="badge bg-warning">Upcoming</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Closed</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-users me-2"></i>Candidates
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if candidates %}
+                    <div class="row">
+                        {% for candidate in candidates %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 border-success">
+                                <div class="card-body">
+                                    <h6 class="card-title text-success">{{ candidate.name }}</h6>
+                                    {% if candidate.party %}
+                                        <p class="card-text text-muted small">
+                                            <i class="fas fa-flag me-1"></i>{{ candidate.party }}
+                                        </p>
+                                    {% endif %}
+                                    {% if candidate.description %}
+                                        <p class="card-text small">{{ candidate.description }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-user-slash fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No candidates have been added to this election yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-vote-yea me-2"></i>Voting Options
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if current_user.is_authenticated %}
+                    {% if election.is_open %}
+                        {% if candidates %}
+                            <p class="text-success">
+                                <i class="fas fa-check-circle me-2"></i>
+                                This election is currently open for voting.
+                            </p>
+                            <a href="{{ url_for('vote', election_id=election.id) }}" class="btn btn-success btn-lg w-100">
+                                <i class="fas fa-vote-yea me-2"></i>Cast Your Vote
+                            </a>
+                        {% else %}
+                            <p class="text-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                No candidates available for voting.
+                            </p>
+                        {% endif %}
+                    {% elif election.start_date > now %}
+                        <p class="text-info">
+                            <i class="fas fa-clock me-2"></i>
+                            Voting will begin on {{ election.start_date.strftime('%B %d, %Y at %I:%M %p') }}.
+                        </p>
+                    {% else %}
+                        <p class="text-muted">
+                            <i class="fas fa-lock me-2"></i>
+                            This election has ended.
+                        </p>
+                        <a href="{{ url_for('results', election_id=election.id) }}" class="btn btn-primary w-100">
+                            <i class="fas fa-chart-bar me-2"></i>View Results
+                        </a>
+                    {% endif %}
+                {% else %}
+                    <p class="text-warning">
+                        <i class="fas fa-user-lock me-2"></i>
+                        Please log in to participate in this election.
+                    </p>
+                    <a href="{{ url_for('login') }}" class="btn btn-primary w-100">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header bg-warning text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Quick Results
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="results-container">
+                    <p class="text-muted text-center">
+                        <i class="fas fa-spinner fa-spin me-2"></i>
+                        Loading results...
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="card-title text-primary">
+                    <i class="fas fa-shield-alt me-2"></i>Voting Security
+                </h6>
+                <ul class="list-unstyled small text-muted">
+                    <li class="mb-1">
+                        <i class="fas fa-check text-success me-2"></i>
+                        One vote per registered voter
+                    </li>
+                    <li class="mb-1">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Votes are cryptographically secured
+                    </li>
+                    <li class="mb-1">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Immutable blockchain records
+                    </li>
+                    <li class="mb-1">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Transparent audit trail
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function loadResults() {
+    fetch('/api/election/{{ election.id }}/results')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('results-container');
+            if (data.total_votes > 0) {
+                let html = '<div class="text-center mb-3">';
+                html += `<h6>Total Votes: ${data.total_votes}</h6>`;
+                html += '</div>';
+                
+                const candidates = Object.keys(data.vote_counts);
+                candidates.forEach(candidate => {
+                    const votes = data.vote_counts[candidate];
+                    const percentage = ((votes / data.total_votes) * 100).toFixed(1);
+                    html += `
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between">
+                                <span class="small">${candidate}</span>
+                                <span class="small fw-bold">${votes} (${percentage}%)</span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-success" style="width: ${percentage}%"></div>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<p class="text-muted text-center">No votes cast yet.</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading results:', error);
+            document.getElementById('results-container').innerHTML = 
+                '<p class="text-muted text-center">Unable to load results.</p>';
+        });
+}
+
+// Load results when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadResults();
+    
+    // Refresh results every 30 seconds
+    setInterval(loadResults, 30000);
+});
+</script>
+{% endblock %} 

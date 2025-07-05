@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Results - {{ election.title }} - Blockchain Voting System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('election_detail', election_id=election.id) }}">{{ election.title }}</a></li>
+                <li class="breadcrumb-item active">Results</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-chart-bar me-2"></i>Election Results
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="text-center">
+                            <h3 class="text-primary">{{ blockchain_results.total_votes }}</h3>
+                            <p class="text-muted">Total Votes Cast</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-center">
+                            <h3 class="text-success">{{ blockchain_results.vote_counts|length }}</h3>
+                            <p class="text-muted">Candidates</p>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if blockchain_results.vote_counts %}
+                    <div class="mb-4">
+                        <canvas id="resultsChart" width="400" height="200"></canvas>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Candidate</th>
+                                    <th>Votes</th>
+                                    <th>Percentage</th>
+                                    <th>Progress</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for candidate, votes in blockchain_results.vote_counts.items() %}
+                                <tr>
+                                    <td><strong>{{ candidate }}</strong></td>
+                                    <td>{{ votes }}</td>
+                                    <td>{{ "%.1f"|format((votes / blockchain_results.total_votes) * 100) }}%</td>
+                                    <td>
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-success" 
+                                                 style="width: {{ (votes / blockchain_results.total_votes) * 100 }}%">
+                                                {{ votes }}
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No votes have been cast in this election yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if blockchain_results.votes %}
+        <div class="card mt-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>Recent Votes
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Voter ID</th>
+                                <th>Candidate</th>
+                                <th>Block</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for vote in blockchain_results.votes[-10:] %}
+                            <tr>
+                                <td><code>{{ vote.voter_id[:8] }}...</code></td>
+                                <td>{{ vote.candidate }}</td>
+                                <td><span class="badge bg-secondary">{{ vote.block_index }}</span></td>
+                                <td>{{ vote.timestamp|datetime }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-link me-2"></i>Blockchain Verification
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="blockchain-info">
+                    <div class="row text-center mb-3">
+                        <div class="col-6">
+                            <h4>{{ blockchain_results.votes|length }}</h4>
+                            <small>Votes on Blockchain</small>
+                        </div>
+                        <div class="col-6">
+                            <h4>{{ blockchain_results.vote_counts|length }}</h4>
+                            <small>Candidates</small>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Blockchain Status:</strong> Verified
+                    </div>
+                    
+                    <div class="small text-muted">
+                        <p><strong>Election ID:</strong> {{ election.id }}</p>
+                        <p><strong>Total Blocks:</strong> <span id="total-blocks">-</span></p>
+                        <p><strong>Last Updated:</strong> <span id="last-updated">-</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header bg-warning text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-shield-alt me-2"></i>Security Features
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled small">
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        All votes cryptographically verified
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Immutable blockchain records
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Transparent audit trail
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Real-time result updates
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Tamper-proof vote storage
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="card-title text-primary">
+                    <i class="fas fa-download me-2"></i>Export Options
+                </h6>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary btn-sm" onclick="exportResults()">
+                        <i class="fas fa-file-csv me-2"></i>Export as CSV
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" onclick="exportBlockchain()">
+                        <i class="fas fa-link me-2"></i>Export Blockchain Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Chart.js configuration
+const ctx = document.getElementById('resultsChart').getContext('2d');
+const chartData = {
+    labels: [{% for candidate in blockchain_results.vote_counts.keys() %}'{{ candidate }}',{% endfor %}],
+    datasets: [{
+        label: 'Votes',
+        data: [{% for votes in blockchain_results.vote_counts.values() %}{{ votes }},{% endfor %}],
+        backgroundColor: [
+            '#3498db',
+            '#e74c3c',
+            '#2ecc71',
+            '#f39c12',
+            '#9b59b6',
+            '#1abc9c'
+        ],
+        borderWidth: 2,
+        borderColor: '#fff'
+    }]
+};
+
+const config = {
+    type: 'doughnut',
+    data: chartData,
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+            },
+            title: {
+                display: true,
+                text: 'Vote Distribution'
+            }
+        }
+    }
+};
+
+if (document.getElementById('resultsChart')) {
+    new Chart(ctx, config);
+}
+
+function exportResults() {
+    const data = {
+        election: '{{ election.title }}',
+        total_votes: {{ blockchain_results.total_votes }},
+        candidates: {{ blockchain_results.vote_counts|tojson }}
+    };
+    
+    const csv = convertToCSV(data);
+    downloadCSV(csv, 'election_results.csv');
+}
+
+function exportBlockchain() {
+    fetch('/api/election/{{ election.id }}/results')
+        .then(response => response.json())
+        .then(data => {
+            const jsonStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'blockchain_data.json';
+            a.click();
+        });
+}
+
+function convertToCSV(data) {
+    let csv = 'Election,Total Votes\n';
+    csv += `${data.election},${data.total_votes}\n\n`;
+    csv += 'Candidate,Votes,Percentage\n';
+    
+    const total = data.total_votes;
+    for (const [candidate, votes] of Object.entries(data.candidates)) {
+        const percentage = ((votes / total) * 100).toFixed(1);
+        csv += `${candidate},${votes},${percentage}%\n`;
+    }
+    
+    return csv;
+}
+
+function downloadCSV(csv, filename) {
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+}
+
+// Load blockchain status
+function loadBlockchainStatus() {
+    fetch('/api/blockchain')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('total-blocks').textContent = data.chain.length;
+            document.getElementById('last-updated').textContent = new Date().toLocaleString();
+        })
+        .catch(error => {
+            console.error('Error loading blockchain status:', error);
+        });
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    loadBlockchainStatus();
+    setInterval(loadBlockchainStatus, 30000);
+});
+</script>
+{% endblock %} 

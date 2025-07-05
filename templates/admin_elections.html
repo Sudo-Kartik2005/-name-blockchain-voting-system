@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Elections Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">
+            <i class="fas fa-cog me-2"></i>Elections Management
+        </h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-plus me-2"></i>Create New Election
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-3">
+                        {{ form.title.label(class="form-label") }}
+                        {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else "")) }}
+                        {% if form.title.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.title.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.description.label(class="form-label") }}
+                        {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else ""), rows=3) }}
+                        {% if form.description.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.description.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.start_date.label(class="form-label") }}
+                        {{ form.start_date(class="form-control" + (" is-invalid" if form.start_date.errors else ""), type="datetime-local") }}
+                        {% if form.start_date.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.start_date.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.end_date.label(class="form-label") }}
+                        {{ form.end_date(class="form-control" + (" is-invalid" if form.end_date.errors else ""), type="datetime-local") }}
+                        {% if form.end_date.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.end_date.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="d-grid">
+                        {{ form.submit(class="btn btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>All Elections
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if elections %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Title</th>
+                                    <th>Status</th>
+                                    <th>Start Date</th>
+                                    <th>End Date</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for election in elections %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ election.title }}</strong>
+                                        {% if election.description %}
+                                            <br><small class="text-muted">{{ election.description[:50] }}...</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if election.is_open %}
+                                            <span class="badge bg-success">Open</span>
+                                        {% elif election.start_date > now %}
+                                            <span class="badge bg-warning">Upcoming</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Closed</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ election.start_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>{{ election.end_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('admin_candidates', election_id=election.id) }}" 
+                                               class="btn btn-outline-primary" title="Manage Candidates">
+                                                <i class="fas fa-users"></i>
+                                            </a>
+                                            <a href="{{ url_for('election_detail', election_id=election.id) }}" 
+                                               class="btn btn-outline-info" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('results', election_id=election.id) }}" 
+                                               class="btn btn-outline-success" title="View Results">
+                                                <i class="fas fa-chart-bar"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No elections created yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Blockchain Voting System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="text-center mb-5">
+            <h1 class="display-4 fw-bold text-primary">
+                <i class="fas fa-vote-yea me-3"></i>Blockchain Voting System
+            </h1>
+            <p class="lead text-muted">Secure, transparent, and tamper-proof voting powered by blockchain technology</p>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="stats-card">
+            <i class="fas fa-poll fa-3x mb-3"></i>
+            <h3>{{ elections|length }}</h3>
+            <p class="mb-0">Active Elections</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stats-card">
+            <i class="fas fa-users fa-3x mb-3"></i>
+            <h3 id="total-voters">-</h3>
+            <p class="mb-0">Registered Voters</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stats-card">
+            <i class="fas fa-link fa-3x mb-3"></i>
+            <h3 id="blockchain-blocks">-</h3>
+            <p class="mb-0">Blockchain Blocks</p>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-calendar-alt me-2"></i>Active Elections
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if elections %}
+                    <div class="row">
+                        {% for election in elections %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 border-primary">
+                                <div class="card-body">
+                                    <h6 class="card-title text-primary">{{ election.title }}</h6>
+                                    {% if election.description %}
+                                        <p class="card-text text-muted small">{{ election.description[:100] }}...</p>
+                                    {% endif %}
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="text-muted">
+                                            <i class="fas fa-clock me-1"></i>
+                                            {% if election.is_open %}
+                                                <span class="text-success">Open</span>
+                                            {% else %}
+                                                <span class="text-warning">Upcoming</span>
+                                            {% endif %}
+                                        </small>
+                                        <a href="{{ url_for('election_detail', election_id=election.id) }}" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye me-1"></i>View
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No active elections at the moment.</p>
+                        {% if current_user.is_authenticated %}
+                            <a href="{{ url_for('admin_elections') }}" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i>Create Election
+                            </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-link me-2"></i>Blockchain Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="blockchain-info">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <h4 id="chain-length">-</h4>
+                            <small>Blocks</small>
+                        </div>
+                        <div class="col-6">
+                            <h4 id="pending-txs">-</h4>
+                            <small>Pending</small>
+                        </div>
+                    </div>
+                    <hr class="my-3">
+                    <div class="text-center">
+                        <button class="btn btn-outline-light btn-sm" onclick="refreshBlockchainData()">
+                            <i class="fas fa-sync-alt me-1"></i>Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-shield-alt me-2"></i>Security Features
+                </h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        Cryptographic Verification
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        Immutable Vote Records
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        Transparent Audit Trail
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        One Vote Per Voter
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        Real-time Results
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not current_user.is_authenticated %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card border-warning">
+            <div class="card-body text-center">
+                <h5 class="card-title text-warning">
+                    <i class="fas fa-user-lock me-2"></i>Get Started
+                </h5>
+                <p class="card-text">Register as a voter to participate in elections and cast your vote securely on the blockchain.</p>
+                <a href="{{ url_for('register') }}" class="btn btn-warning me-2">
+                    <i class="fas fa-user-plus me-1"></i>Register
+                </a>
+                <a href="{{ url_for('login') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-sign-in-alt me-1"></i>Login
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function refreshBlockchainData() {
+    fetch('/api/blockchain')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('blockchain-blocks').textContent = data.chain.length;
+            document.getElementById('chain-length').textContent = data.chain.length;
+            document.getElementById('pending-txs').textContent = data.pending_transactions.length;
+        })
+        .catch(error => {
+            console.error('Error fetching blockchain data:', error);
+        });
+}
+
+// Load initial data
+document.addEventListener('DOMContentLoaded', function() {
+    refreshBlockchainData();
+    
+    // Refresh every 30 seconds
+    setInterval(refreshBlockchainData, 30000);
+});
+</script>
+{% endblock %} 

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Candidates{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>Manage Candidates for {{ election.title }}</h2>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.name.label(class="form-label") }}
+            {{ form.name(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.party.label(class="form-label") }}
+            {{ form.party(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.description.label(class="form-label") }}
+            {{ form.description(class="form-control") }}
+        </div>
+        <button type="submit" class="btn btn-primary">{{ form.submit.label.text }}</button>
+    </form>
+
+    <h3 class="mt-4">Current Candidates</h3>
+    <ul class="list-group">
+        {% for candidate in candidates %}
+            <li class="list-group-item">
+                <strong>{{ candidate.name }}</strong>
+                {% if candidate.party %} ({{ candidate.party }}){% endif %}
+                <br>
+                {{ candidate.description }}
+            </li>
+        {% else %}
+            <li class="list-group-item">No candidates yet.</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endblock %} 

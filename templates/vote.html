@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Vote - {{ election.title }} - Blockchain Voting System{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('election_detail', election_id=election.id) }}">{{ election.title }}</a></li>
+                <li class="breadcrumb-item active">Vote</li>
+            </ol>
+        </nav>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-vote-yea me-2"></i>Cast Your Vote
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6 class="alert-heading">
+                        <i class="fas fa-info-circle me-2"></i>Election Information
+                    </h6>
+                    <p class="mb-0">
+                        <strong>{{ election.title }}</strong><br>
+                        {{ election.description or "No description provided." }}
+                    </p>
+                </div>
+                
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-user-check me-2"></i>Select Your Candidate
+                        </label>
+                        <div class="row">
+                            {% for candidate in candidates %}
+                            <div class="col-md-6 mb-3">
+                                <div class="card h-100 border-2" id="candidate-{{ candidate.id }}">
+                                    <div class="card-body text-center">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="candidate" 
+                                                   id="candidate-{{ candidate.id }}" value="{{ candidate.id }}" 
+                                                   onchange="selectCandidate('{{ candidate.id }}')">
+                                            <label class="form-check-label" for="candidate-{{ candidate.id }}">
+                                                <h6 class="card-title text-primary">{{ candidate.name }}</h6>
+                                                {% if candidate.party %}
+                                                    <p class="card-text text-muted small">
+                                                        <i class="fas fa-flag me-1"></i>{{ candidate.party }}
+                                                    </p>
+                                                {% endif %}
+                                                {% if candidate.description %}
+                                                    <p class="card-text small">{{ candidate.description }}</p>
+                                                {% endif %}
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% if form.candidate.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.candidate.errors %}
+                                    <i class="fas fa-exclamation-triangle me-1"></i>{{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Important Notice
+                        </h6>
+                        <ul class="mb-0 small">
+                            <li>Your vote will be permanently recorded on the blockchain</li>
+                            <li>You can only vote once in this election</li>
+                            <li>Your vote is anonymous but verifiable</li>
+                            <li>Voting cannot be undone once submitted</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-success btn-lg", onclick="return confirmVote()") }}
+                        <a href="{{ url_for('election_detail', election_id=election.id) }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Election
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-shield-alt me-2"></i>Vote Security
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary">
+                            <i class="fas fa-lock me-2"></i>How Your Vote is Secured
+                        </h6>
+                        <ul class="list-unstyled small text-muted">
+                            <li class="mb-1">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Cryptographic hash verification
+                            </li>
+                            <li class="mb-1">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Immutable blockchain storage
+                            </li>
+                            <li class="mb-1">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Distributed ledger technology
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-primary">
+                            <i class="fas fa-eye me-2"></i>Transparency Features
+                        </h6>
+                        <ul class="list-unstyled small text-muted">
+                            <li class="mb-1">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Public audit trail
+                            </li>
+                            <li class="mb-1">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Real-time vote counting
+                            </li>
+                            <li class="mb-1">
+                                <i class="fas fa-check text-success me-2"></i>
+                                Verifiable results
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function selectCandidate(candidateId) {
+    // Remove selection from all candidates
+    document.querySelectorAll('.card[id^="candidate-"]').forEach(card => {
+        card.classList.remove('border-primary');
+        card.classList.add('border-2');
+    });
+    
+    // Highlight selected candidate
+    const selectedCard = document.getElementById('candidate-' + candidateId);
+    if (selectedCard) {
+        selectedCard.classList.remove('border-2');
+        selectedCard.classList.add('border-primary');
+    }
+}
+
+function confirmVote() {
+    const selectedCandidate = document.querySelector('input[name="candidate"]:checked');
+    if (!selectedCandidate) {
+        alert('Please select a candidate before voting.');
+        return false;
+    }
+    
+    const candidateName = document.querySelector(`label[for="candidate-${selectedCandidate.value}"] .card-title`).textContent;
+    
+    return confirm(`Are you sure you want to vote for ${candidateName}?\n\nThis action cannot be undone.`);
+}
+
+// Initialize candidate selection
+document.addEventListener('DOMContentLoaded', function() {
+    const selectedCandidate = document.querySelector('input[name="candidate"]:checked');
+    if (selectedCandidate) {
+        selectCandidate(selectedCandidate.value);
+    }
+});
+</script>
+{% endblock %} 
