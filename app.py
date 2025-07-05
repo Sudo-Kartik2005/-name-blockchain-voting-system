@@ -12,7 +12,9 @@ import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-this-in-production'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///voting_system.db'
+# Use absolute path for database in deployment
+db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'voting_system.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
@@ -47,6 +49,11 @@ def load_user(user_id):
 def init_db():
     """Initialize the database with tables"""
     with app.app_context():
+        # Ensure instance directory exists
+        instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
+        if not os.path.exists(instance_path):
+            os.makedirs(instance_path)
+        
         db.create_all()
         
         # Create initial blockchain state if it doesn't exist
@@ -366,9 +373,11 @@ def api_election_results(election_id):
     results = blockchain.get_election_results(election_id)
     return jsonify(results)
 
-if __name__ == '__main__':
+# Initialize database when app starts (for deployment)
+with app.app_context():
     init_db()
-    
+
+if __name__ == '__main__':
     # Start mining thread
     mining_thread = threading.Thread(target=mine_pending_transactions, daemon=True)
     mining_thread.start()
