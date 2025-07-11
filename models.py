@@ -45,7 +45,8 @@ class Election(db.Model):
     @property
     def is_open(self):
         """Check if the election is currently open for voting"""
-        now = datetime.utcnow()
+        from datetime import datetime
+        now = datetime.now()
         return self.start_date <= now <= self.end_date and self.is_active
 
 class Candidate(db.Model):

@@ -71,6 +71,13 @@ class CandidateForm(FlaskForm):
     description = TextAreaField('Description', validators=[Length(max=500)])
     submit = SubmitField('Add Candidate')
 
+class EditCandidateForm(FlaskForm):
+    """Form for editing candidates"""
+    name = StringField('Candidate Name', validators=[DataRequired(), Length(max=100)])
+    party = StringField('Party', validators=[Length(max=100)])
+    description = TextAreaField('Description', validators=[Length(max=500)])
+    submit = SubmitField('Update Candidate')
+
 class VoteForm(FlaskForm):
     """Form for casting votes"""
     candidate = SelectField('Select Candidate', coerce=str, validators=[DataRequired()])

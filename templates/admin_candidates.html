@@ -4,6 +4,13 @@
 
 {% block content %}
 <div class="container">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('admin_elections') }}">Elections</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Candidates</li>
+        </ol>
+    </nav>
+    
     <h2>Manage Candidates for {{ election.title }}</h2>
     <form method="POST">
         {{ form.hidden_tag() }}
@@ -23,17 +30,88 @@
     </form>
 
     <h3 class="mt-4">Current Candidates</h3>
-    <ul class="list-group">
-        {% for candidate in candidates %}
-            <li class="list-group-item">
-                <strong>{{ candidate.name }}</strong>
-                {% if candidate.party %} ({{ candidate.party }}){% endif %}
-                <br>
-                {{ candidate.description }}
-            </li>
-        {% else %}
-            <li class="list-group-item">No candidates yet.</li>
-        {% endfor %}
-    </ul>
+    {% if candidates %}
+        <div class="row">
+            {% for candidate in candidates %}
+            <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <h6 class="card-title text-primary">{{ candidate.name }}</h6>
+                        {% if candidate.party %}
+                            <p class="card-text text-muted small">
+                                <i class="fas fa-flag me-1"></i>{{ candidate.party }}
+                            </p>
+                        {% endif %}
+                        {% if candidate.description %}
+                            <p class="card-text small">{{ candidate.description }}</p>
+                        {% endif %}
+                        
+                        <div class="btn-group btn-group-sm mt-2">
+                            <a href="{{ url_for('edit_candidate', election_id=election.id, candidate_id=candidate.id) }}" 
+                               class="btn btn-outline-warning" title="Edit Candidate">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button type="button" class="btn btn-outline-danger" 
+                                    onclick="confirmDelete('{{ candidate.name }}', '{{ url_for('delete_candidate', election_id=election.id, candidate_id=candidate.id) }}')"
+                                    title="Delete Candidate">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-4">
+            <i class="fas fa-user-slash fa-3x text-muted mb-3"></i>
+            <p class="text-muted">No candidates have been added to this election yet.</p>
+        </div>
+    {% endif %}
 </div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Confirm Delete
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the candidate <strong id="candidateName"></strong>?</p>
+                <p class="text-danger small">
+                    <i class="fas fa-exclamation-circle me-1"></i>
+                    This action cannot be undone. If there are votes cast for this candidate, deletion will be prevented.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-2"></i>Delete Candidate
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmDelete(candidateName, deleteUrl) {
+    // Set the candidate name in the modal
+    document.getElementById('candidateName').textContent = candidateName;
+    
+    // Set the form action
+    document.getElementById('deleteForm').action = deleteUrl;
+    
+    // Show the modal
+    var deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    deleteModal.show();
+}
+</script>
 {% endblock %} 

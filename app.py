@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, Voter, Election, Candidate, Vote, BlockchainState, PendingTransaction
-from forms import RegistrationForm, LoginForm, ElectionForm, CandidateForm, VoteForm, AdminForm
+from forms import RegistrationForm, LoginForm, ElectionForm, CandidateForm, EditCandidateForm, VoteForm, AdminForm
 from blockchain import Blockchain
 import json
 import threading
@@ -11,10 +11,17 @@ from datetime import datetime, timedelta
 import os
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-change-this-in-production'
-# Use absolute path for database in deployment
-db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'voting_system.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
+# Load secret key from environment variable for production
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-change-this-in-production')
+if app.config['SECRET_KEY'] == 'your-secret-key-change-this-in-production':
+    import warnings
+    warnings.warn('WARNING: Using default SECRET_KEY! Set SECRET_KEY environment variable for production.')
+
+# Use environment variable for database URI if set
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+    'DATABASE_URL',
+    f"sqlite:///{os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'voting_system.db')}"
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
@@ -306,6 +313,53 @@ def admin_candidates(election_id):
     
     candidates = Candidate.query.filter_by(election_id=election_id).all()
     return render_template('admin_candidates.html', form=form, election=election, candidates=candidates)
+
+@app.route('/admin/election/<election_id>/candidate/<candidate_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_candidate(election_id, candidate_id):
+    """Edit a candidate"""
+    election = Election.query.get_or_404(election_id)
+    candidate = Candidate.query.get_or_404(candidate_id)
+    
+    # Ensure candidate belongs to this election
+    if candidate.election_id != election_id:
+        flash('Candidate not found in this election.', 'error')
+        return redirect(url_for('admin_candidates', election_id=election_id))
+    
+    form = EditCandidateForm(obj=candidate)
+    
+    if form.validate_on_submit():
+        candidate.name = form.name.data
+        candidate.party = form.party.data
+        candidate.description = form.description.data
+        db.session.commit()
+        flash('Candidate updated successfully!', 'success')
+        return redirect(url_for('admin_candidates', election_id=election_id))
+    
+    return render_template('edit_candidate.html', form=form, election=election, candidate=candidate)
+
+@app.route('/admin/election/<election_id>/candidate/<candidate_id>/delete', methods=['POST'])
+@login_required
+def delete_candidate(election_id, candidate_id):
+    """Delete a candidate"""
+    election = Election.query.get_or_404(election_id)
+    candidate = Candidate.query.get_or_404(candidate_id)
+    
+    # Ensure candidate belongs to this election
+    if candidate.election_id != election_id:
+        flash('Candidate not found in this election.', 'error')
+        return redirect(url_for('admin_candidates', election_id=election_id))
+    
+    # Check if there are any votes for this candidate
+    vote_count = Vote.query.filter_by(candidate_id=candidate_id).count()
+    if vote_count > 0:
+        flash(f'Cannot delete candidate. There are {vote_count} vote(s) cast for this candidate.', 'error')
+        return redirect(url_for('admin_candidates', election_id=election_id))
+    
+    db.session.delete(candidate)
+    db.session.commit()
+    flash('Candidate deleted successfully!', 'success')
+    return redirect(url_for('admin_candidates', election_id=election_id))
 
 @app.route('/admin/blockchain', methods=['GET', 'POST'])
 @login_required

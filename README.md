@@ -108,7 +108,9 @@ A secure, transparent, and tamper-proof voting system built with Python, Flask, 
 2. **Managing Candidates**
    - Add candidate names and parties
    - Include candidate descriptions
-   - Manage candidate information
+   - Edit existing candidate information
+   - Delete candidates (if no votes cast)
+   - Update candidate details in real-time
 
 3. **Blockchain Management**
    - Monitor blockchain status
@@ -182,7 +184,41 @@ A secure, transparent, and tamper-proof voting system built with Python, Flask, 
 ### Admin APIs
 - `POST /admin/blockchain` - Blockchain management actions
 - `GET /admin/elections` - Election management
-- `POST /admin/election/<id>/candidates` - Candidate management
+- `POST /admin/election/<id>/candidates` - Add new candidates
+- `GET /admin/election/<id>/candidate/<candidate_id>/edit` - Edit candidate
+- `POST /admin/election/<id>/candidate/<candidate_id>/edit` - Update candidate
+- `POST /admin/election/<id>/candidate/<candidate_id>/delete` - Delete candidate
+
+## 👥 Candidate Management
+
+### Features
+- **Edit Candidate Details**: Update names, parties, and descriptions
+- **Delete Candidates**: Remove candidates (only if no votes cast)
+- **Real-time Updates**: Changes are immediately reflected
+- **Safety Checks**: Prevents deletion of candidates with existing votes
+- **User-friendly Interface**: Intuitive edit and delete buttons
+
+### How to Use
+
+1. **Access Candidate Management**
+   - Go to Admin Panel → Elections
+   - Click the "Manage Candidates" button for any election
+
+2. **Edit a Candidate**
+   - Click the edit (✏️) button next to any candidate
+   - Modify the name, party, or description
+   - Click "Update Candidate" to save changes
+
+3. **Delete a Candidate**
+   - Click the delete (🗑️) button next to any candidate
+   - Confirm the deletion in the modal dialog
+   - Note: Candidates with votes cannot be deleted
+
+### Safety Features
+- **Vote Protection**: Candidates with existing votes cannot be deleted
+- **Confirmation Dialogs**: Delete operations require confirmation
+- **Breadcrumb Navigation**: Easy navigation between pages
+- **Error Handling**: Clear error messages for invalid operations
 
 ## 🧪 Testing
 
@@ -190,9 +226,11 @@ A secure, transparent, and tamper-proof voting system built with Python, Flask, 
 1. Register a new voter account
 2. Create an election as admin
 3. Add candidates to the election
-4. Cast votes from different accounts
-5. Verify blockchain integrity
-6. Check election results
+4. Edit candidate details
+5. Try to delete candidates (with and without votes)
+6. Cast votes from different accounts
+7. Verify blockchain integrity
+8. Check election results
 
 ### Automated Testing
 ```bash
@@ -213,39 +251,47 @@ python -m pytest tests/
 - Customize templates in `templates/` directory
 - Adjust mining parameters in `app.py`
 
-## 🚀 Deployment
+## 🚀 Deployment Guide
 
-### Production Setup
-1. **Use a production WSGI server**
-   ```bash
-   pip install gunicorn
-   gunicorn -w 4 -b 0.0.0.0:5000 app:app
-   ```
+### 1. Set Environment Variables
 
-2. **Configure a production database**
-   - Use PostgreSQL or MySQL instead of SQLite
-   - Set up proper database backups
+Create a `.env` file or set these variables in your hosting environment:
 
-3. **Set up HTTPS**
-   - Configure SSL certificates
-   - Use reverse proxy (nginx)
-
-4. **Environment variables**
-   ```bash
-   export FLASK_ENV=production
-   export SECRET_KEY=your-secure-secret-key
-   ```
-
-### Docker Deployment
-```dockerfile
-FROM python:3.9-slim
-WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
-COPY . .
-EXPOSE 5000
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "app:app"]
 ```
+SECRET_KEY=your-very-secret-key-here
+DATABASE_URL=sqlite:///instance/voting_system.db  # Or your production database URI
+```
+
+### 2. Install Production Dependencies
+
+```
+pip install gunicorn  # For Linux
+# or
+pip install waitress  # For Windows
+```
+
+### 3. Run with a Production WSGI Server
+
+**Linux (gunicorn):**
+```
+gunicorn -w 4 app:app
+```
+
+**Windows (waitress):**
+```
+waitress-serve --port=8080 app:app
+```
+
+### 4. Security Best Practices
+- Never use the default SECRET_KEY in production.
+- Always use HTTPS in production.
+- Protect your database file and credentials.
+- Do not run with debug=True in production.
+- Regularly back up your database.
+- Monitor logs for suspicious activity.
+
+### 5. Static Files
+- Serve static files (CSS, JS, images) with your web server (nginx, Apache) for best performance.
 
 ## 🤝 Contributing
 
