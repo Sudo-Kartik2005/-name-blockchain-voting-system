@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: blockchain-voting-system
+    env: python
+    buildCommand: |
+      pip install -r requirements.txt
+      pip install gunicorn>=20.1.0
+    startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: SECRET_KEY
+        generateValue: true 
