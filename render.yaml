@@ -3,8 +3,11 @@ services:
     name: blockchain-voting-system
     env: python
     buildCommand: |
+      pip install --upgrade pip
       pip install -r requirements.txt
       pip install gunicorn>=20.1.0
+      which gunicorn || echo "Gunicorn not found in PATH"
+      gunicorn --version || echo "Gunicorn version check failed"
     startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
     envVars:
       - key: PYTHON_VERSION
