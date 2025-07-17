@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, abort
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, Voter, Election, Candidate, Vote, BlockchainState, PendingTransaction
@@ -123,6 +123,16 @@ def mine_pending_transactions():
             except Exception as e:
                 print(f"Error in mining: {e}")
                 time.sleep(30)
+
+def admin_required(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not getattr(current_user, 'is_admin', False):
+            flash('Admin access required.', 'error')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route('/')
 def index():
@@ -270,6 +280,7 @@ def results(election_id):
 
 @app.route('/admin/elections', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def admin_elections():
     """Admin panel for managing elections"""
     if not current_user.is_authenticated:
@@ -294,6 +305,7 @@ def admin_elections():
 
 @app.route('/admin/election/<election_id>/candidates', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def admin_candidates(election_id):
     """Manage candidates for an election"""
     election = Election.query.get_or_404(election_id)
@@ -316,6 +328,7 @@ def admin_candidates(election_id):
 
 @app.route('/admin/election/<election_id>/candidate/<candidate_id>/edit', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def edit_candidate(election_id, candidate_id):
     """Edit a candidate"""
     election = Election.query.get_or_404(election_id)
@@ -340,6 +353,7 @@ def edit_candidate(election_id, candidate_id):
 
 @app.route('/admin/election/<election_id>/candidate/<candidate_id>/delete', methods=['POST'])
 @login_required
+@admin_required
 def delete_candidate(election_id, candidate_id):
     """Delete a candidate"""
     election = Election.query.get_or_404(election_id)
@@ -363,6 +377,7 @@ def delete_candidate(election_id, candidate_id):
 
 @app.route('/admin/blockchain', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def admin_blockchain():
     """Admin panel for blockchain management"""
     form = AdminForm()
@@ -426,6 +441,21 @@ def api_election_results(election_id):
     """API endpoint to get election results"""
     results = blockchain.get_election_results(election_id)
     return jsonify(results)
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    if current_user.is_authenticated and getattr(current_user, 'is_admin', False):
+        return redirect(url_for('admin_elections'))
+
+    form = LoginForm()
+    if form.validate_on_submit():
+        voter = Voter.query.filter_by(username=form.username.data).first()
+        if voter and voter.is_admin and check_password_hash(voter.password_hash, form.password.data):
+            login_user(voter, remember=form.remember_me.data)
+            return redirect(url_for('admin_elections'))
+        else:
+            flash('Invalid admin credentials', 'error')
+    return render_template('admin_login.html', form=form)
 
 # Initialize database when app starts (for deployment)
 with app.app_context():

@@ -23,7 +23,15 @@ def create_new_admin():
         # Check if admin already exists
         existing_admin = Voter.query.filter_by(username='newadmin').first()
         if existing_admin:
-            print("❌ Admin user 'newadmin' already exists!")
+            print("⚠️  Admin user 'newadmin' already exists! Updating credentials and admin status...")
+            existing_admin.password_hash = generate_password_hash('123456')
+            existing_admin.is_admin = True
+            db.session.commit()
+            print("✅ Admin user 'newadmin' updated successfully!")
+            print("\n📋 Login Credentials:")
+            print("   Username: newadmin")
+            print("   Password: 123456")
+            print("\n🌐 Go to http://localhost:8080 and login with these credentials")
             return
         
         # Create new admin user
@@ -35,7 +43,8 @@ def create_new_admin():
             last_name='Admin',
             date_of_birth=datetime(1990, 1, 1).date(),
             voter_id='ADMIN001',
-            is_verified=True
+            is_verified=True,
+            is_admin=True
         )
         
         db.session.add(new_admin)
@@ -43,7 +52,7 @@ def create_new_admin():
         
         print("✅ New admin user created successfully!")
         print("\n📋 Login Credentials:")
-        print("   Username: newadmin")
+        print("   Username: Kartikadmin")
         print("   Password: 123456")
         print("\n🌐 Go to http://localhost:8080 and login with these credentials")
 

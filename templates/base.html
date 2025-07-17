@@ -24,6 +24,7 @@
         .navbar {
             background: rgba(44, 62, 80, 0.95) !important;
             backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             box-shadow: 0 2px 20px rgba(0,0,0,0.1);
         }
         
@@ -39,6 +40,7 @@
             margin: 20px auto;
             padding: 30px;
             backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
         
         .card {
@@ -149,7 +151,7 @@
                             <i class="fas fa-poll me-1"></i>Elections
                         </a>
                     </li>
-                    {% if current_user.is_authenticated %}
+                    {% if current_user.is_authenticated and current_user.is_admin %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('admin_elections') }}">
                             <i class="fas fa-cog me-1"></i>Admin
@@ -193,7 +195,7 @@
                     <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
                         <i class="fas fa-{{ 'exclamation-triangle' if category == 'error' else 'check-circle' }} me-2"></i>
                         {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" title="Close alert"></button>
                     </div>
                 {% endfor %}
             {% endif %}

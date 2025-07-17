@@ -17,6 +17,7 @@ class Voter(UserMixin, db.Model):
     voter_id = db.Column(db.String(20), unique=True, nullable=False)
     is_verified = db.Column(db.Boolean, default=False)
     is_active = db.Column(db.Boolean, default=True)
+    is_admin = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Relationship with votes
