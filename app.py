@@ -443,6 +443,7 @@ def api_election_results(election_id):
     return jsonify(results)
 
 @app.route('/admin/login', methods=['GET', 'POST'])
+@app.route('/login/admin', methods=['GET', 'POST'])
 def admin_login():
     if current_user.is_authenticated and getattr(current_user, 'is_admin', False):
         return redirect(url_for('admin_elections'))
