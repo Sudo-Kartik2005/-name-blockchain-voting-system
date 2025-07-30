@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, abort
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, Voter, Election, Candidate, Vote, BlockchainState, PendingTransaction
@@ -9,6 +9,7 @@ import threading
 import time
 from datetime import datetime, timedelta
 import os
+from flask_mail import Mail, Message
 
 app = Flask(__name__)
 # Load secret key from environment variable for production
@@ -29,6 +30,17 @@ db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+# Initialize Flask-Mail
+mail = Mail()
+app.config['MAIL_SERVER'] = 'smtp.mailtrap.io'
+app.config['MAIL_PORT'] = 2525
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'your-mailtrap-username')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', 'your-mailtrap-password')
+app.config['MAIL_DISABLED'] = os.environ.get('MAIL_DISABLED', 'false').lower() == 'true'
+mail.init_app(app)
 
 # Initialize blockchain
 blockchain = Blockchain()
@@ -94,11 +106,13 @@ def mine_pending_transactions():
                         if tx.transaction_type == 'vote':
                             tx_data = json.loads(tx.data)
                             # Find the corresponding vote record
-                            vote = Vote.query.filter_by(
-                                voter_id=Voter.query.filter_by(voter_id=tx_data['voter_id']).first().id,
-                                election_id=tx_data['election_id'],
-                                candidate_id=tx_data['candidate_id']
-                            ).first()
+                            voter = Voter.query.filter_by(voter_id=tx_data['voter_id']).first()
+                            if voter:
+                                vote = Vote.query.filter_by(
+                                    voter_id=voter.id,
+                                    election_id=tx_data['election_id'],
+                                    candidate_id=tx_data['candidate_id']
+                                ).first()
                             
                             if vote and not vote.transaction_hash:
                                 vote.transaction_hash = block_hash
@@ -124,16 +138,6 @@ def mine_pending_transactions():
                 print(f"Error in mining: {e}")
                 time.sleep(30)
 
-def admin_required(f):
-    from functools import wraps
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not getattr(current_user, 'is_admin', False):
-            flash('Admin access required.', 'error')
-            return redirect(url_for('index'))
-        return f(*args, **kwargs)
-    return decorated_function
-
 @app.route('/')
 def index():
     """Home page"""
@@ -142,28 +146,79 @@ def index():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    """Voter registration"""
+    """Voter registration with OTP verification"""
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     
     form = RegistrationForm()
     if form.validate_on_submit():
-        hashed_password = generate_password_hash(form.password.data)
-        voter = Voter(
-            username=form.username.data,
-            email=form.email.data,
-            password_hash=hashed_password,
-            first_name=form.first_name.data,
-            last_name=form.last_name.data,
-            date_of_birth=form.date_of_birth.data,
-            voter_id=form.voter_id.data
-        )
-        db.session.add(voter)
-        db.session.commit()
-        flash('Registration successful! Please log in.', 'success')
-        return redirect(url_for('login'))
-    
+        import random
+        otp = str(random.randint(100000, 999999))
+        # Store registration data and OTP in session
+        session['registration_data'] = {
+            'username': form.username.data,
+            'email': form.email.data,
+            'password_hash': generate_password_hash(form.password.data),
+            'first_name': form.first_name.data,
+            'last_name': form.last_name.data,
+            'date_of_birth': form.date_of_birth.data.isoformat(),
+            'voter_id': form.voter_id.data
+        }
+        session['otp'] = otp
+        session['otp_email'] = form.email.data
+        # Send OTP email via Mailtrap
+        if app.config.get('MAIL_DISABLED', False):
+            # Email disabled for development
+            flash(f'Email disabled for development. Your OTP is: {otp}', 'info')
+        else:
+            try:
+                msg = Message('Your OTP Code', recipients=[form.email.data])
+                msg.body = f'Your OTP code for registration is: {otp}'
+                mail.send(msg)
+                flash('An OTP has been sent to your email. Please enter it to complete registration.', 'info')
+            except Exception as e:
+                # Fallback: store OTP in session and show it to user for development
+                print(f"Email sending failed: {e}")
+                flash(f'Email sending failed. For development, your OTP is: {otp}', 'warning')
+        return redirect(url_for('verify_otp'))
     return render_template('register.html', form=form)
+
+@app.route('/verify-otp', methods=['GET', 'POST'])
+def verify_otp():
+    """OTP verification for registration"""
+    if 'registration_data' not in session or 'otp' not in session:
+        flash('No registration in progress. Please register again.', 'error')
+        return redirect(url_for('register'))
+    if request.method == 'POST':
+        entered_otp = request.form.get('otp')
+        if entered_otp == session.get('otp'):
+            # Complete registration
+            data = session['registration_data']
+            
+            # Convert date string to Python date object
+            from datetime import date
+            date_of_birth = date.fromisoformat(data['date_of_birth'])
+            
+            voter = Voter(
+                username=data['username'],
+                email=data['email'],
+                password_hash=data['password_hash'],
+                first_name=data['first_name'],
+                last_name=data['last_name'],
+                date_of_birth=date_of_birth,
+                voter_id=data['voter_id']
+            )
+            db.session.add(voter)
+            db.session.commit()
+            # Clear session
+            session.pop('registration_data', None)
+            session.pop('otp', None)
+            session.pop('otp_email', None)
+            flash('Registration successful! Please log in.', 'success')
+            return redirect(url_for('login'))
+        else:
+            flash('Invalid OTP. Please try again.', 'error')
+    return render_template('verify_otp.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -280,10 +335,9 @@ def results(election_id):
 
 @app.route('/admin/elections', methods=['GET', 'POST'])
 @login_required
-@admin_required
 def admin_elections():
     """Admin panel for managing elections"""
-    if not current_user.is_authenticated:
+    if not current_user.is_admin:
         flash('Admin access required.', 'error')
         return redirect(url_for('index'))
     
@@ -305,9 +359,11 @@ def admin_elections():
 
 @app.route('/admin/election/<election_id>/candidates', methods=['GET', 'POST'])
 @login_required
-@admin_required
 def admin_candidates(election_id):
     """Manage candidates for an election"""
+    if not current_user.is_admin:
+        flash('Admin access required.', 'error')
+        return redirect(url_for('index'))
     election = Election.query.get_or_404(election_id)
     form = CandidateForm()
     
@@ -328,9 +384,11 @@ def admin_candidates(election_id):
 
 @app.route('/admin/election/<election_id>/candidate/<candidate_id>/edit', methods=['GET', 'POST'])
 @login_required
-@admin_required
 def edit_candidate(election_id, candidate_id):
     """Edit a candidate"""
+    if not current_user.is_admin:
+        flash('Admin access required.', 'error')
+        return redirect(url_for('index'))
     election = Election.query.get_or_404(election_id)
     candidate = Candidate.query.get_or_404(candidate_id)
     
@@ -353,9 +411,11 @@ def edit_candidate(election_id, candidate_id):
 
 @app.route('/admin/election/<election_id>/candidate/<candidate_id>/delete', methods=['POST'])
 @login_required
-@admin_required
 def delete_candidate(election_id, candidate_id):
     """Delete a candidate"""
+    if not current_user.is_admin:
+        flash('Admin access required.', 'error')
+        return redirect(url_for('index'))
     election = Election.query.get_or_404(election_id)
     candidate = Candidate.query.get_or_404(candidate_id)
     
@@ -377,9 +437,11 @@ def delete_candidate(election_id, candidate_id):
 
 @app.route('/admin/blockchain', methods=['GET', 'POST'])
 @login_required
-@admin_required
 def admin_blockchain():
     """Admin panel for blockchain management"""
+    if not current_user.is_admin:
+        flash('Admin access required.', 'error')
+        return redirect(url_for('index'))
     form = AdminForm()
     
     if form.validate_on_submit():
@@ -425,11 +487,15 @@ def admin_blockchain():
     state = BlockchainState.query.first()
     pending_count = PendingTransaction.query.count()
     
+    # Get blockchain data for display
+    chain_data = [block.to_dict() for block in blockchain.chain]
+    
     return render_template('admin_blockchain.html', 
                          form=form, 
                          state=state, 
                          pending_count=pending_count,
-                         chain_length=len(blockchain.chain))
+                         chain_length=len(blockchain.chain),
+                         chain_data=chain_data)
 
 @app.route('/api/blockchain')
 def api_blockchain():
@@ -442,22 +508,6 @@ def api_election_results(election_id):
     results = blockchain.get_election_results(election_id)
     return jsonify(results)
 
-@app.route('/admin/login', methods=['GET', 'POST'])
-@app.route('/login/admin', methods=['GET', 'POST'])
-def admin_login():
-    if current_user.is_authenticated and getattr(current_user, 'is_admin', False):
-        return redirect(url_for('admin_elections'))
-
-    form = LoginForm()
-    if form.validate_on_submit():
-        voter = Voter.query.filter_by(username=form.username.data).first()
-        if voter and voter.is_admin and check_password_hash(voter.password_hash, form.password.data):
-            login_user(voter, remember=form.remember_me.data)
-            return redirect(url_for('admin_elections'))
-        else:
-            flash('Invalid admin credentials', 'error')
-    return render_template('admin_login.html', form=form)
-
 # Initialize database when app starts (for deployment)
 with app.app_context():
     init_db()
@@ -469,4 +519,4 @@ if __name__ == '__main__':
     
     # Get port from environment variable (for deployment)
     port = int(os.environ.get('PORT', 8080))
-    app.run(debug=False, host='0.0.0.0', port=port) 
+    app.run(debug=True, host='0.0.0.0', port=port) 

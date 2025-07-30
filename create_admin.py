@@ -52,7 +52,7 @@ def create_new_admin():
         
         print("✅ New admin user created successfully!")
         print("\n📋 Login Credentials:")
-        print("   Username: Kartikadmin")
+        print("   Username: newadmin")
         print("   Password: 123456")
         print("\n🌐 Go to http://localhost:8080 and login with these credentials")
 

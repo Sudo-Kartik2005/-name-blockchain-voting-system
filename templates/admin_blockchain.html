@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Blockchain Management{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Blockchain Management</h2>
+    
+    <!-- Blockchain Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Chain Length</h5>
+                    <p class="card-text display-6">{{ chain_length }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Pending Transactions</h5>
+                    <p class="card-text display-6">{{ pending_count }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Total Transactions</h5>
+                    <p class="card-text display-6">{{ state.total_transactions if state else 0 }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Last Updated</h5>
+                    <p class="card-text">{{ state.last_updated|datetime if state and state.last_updated else 'Never' }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Blockchain Actions -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Blockchain Actions</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        {{ form.hidden_tag() }}
+                        <div class="mb-3">
+                            {{ form.action.label(class="form-label") }}
+                            {{ form.action(class="form-select") }}
+                        </div>
+                        {{ form.submit(class="btn btn-primary") }}
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5>Blockchain Status</h5>
+                </div>
+                <div class="card-body">
+                    {% if state %}
+                        <p><strong>Last Block Index:</strong> {{ state.last_block_index }}</p>
+                        <p><strong>Last Block Hash:</strong> 
+                            <code class="small">{{ state.last_block_hash[:20] }}...</code>
+                        </p>
+                        <p><strong>Chain Valid:</strong> 
+                            <span class="badge {% if state.chain_valid %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ 'Valid' if state.chain_valid else 'Invalid' }}
+                            </span>
+                        </p>
+                    {% else %}
+                        <p class="text-muted">No blockchain state available</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Blockchain Data -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Blockchain Data</h5>
+                    <a href="{{ url_for('api_blockchain') }}" class="btn btn-sm btn-outline-primary" target="_blank">
+                        View JSON
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Block #</th>
+                                    <th>Hash</th>
+                                    <th>Previous Hash</th>
+                                    <th>Transactions</th>
+                                    <th>Timestamp</th>
+                                    <th>Nonce</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for block in chain_data %}
+                                <tr>
+                                    <td>{{ block.index }}</td>
+                                    <td><code class="small">{{ block.hash[:20] }}...</code></td>
+                                    <td><code class="small">{{ block.previous_hash[:20] }}...</code></td>
+                                    <td>{{ block.transactions|length }}</td>
+                                    <td>{{ block.timestamp|datetime }}</td>
+                                    <td>{{ block.nonce }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh blockchain data every 30 seconds
+setInterval(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %} 
