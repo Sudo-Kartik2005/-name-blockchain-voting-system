@@ -6,7 +6,7 @@ from datetime import datetime
 from wtforms.fields import DateTimeLocalField
 import re
 
-# Fallback email validator that doesn't require email_validator package
+# Custom email validator that doesn't require email_validator package
 class SimpleEmailValidator:
     def __init__(self, message=None):
         self.message = message or 'Invalid email address.'
@@ -19,17 +19,10 @@ class SimpleEmailValidator:
             if not re.match(pattern, email):
                 raise ValidationError(self.message)
 
-# Try to import Email validator, fallback to simple one if not available
-try:
-    from wtforms.validators import Email
-    EmailValidator = Email
-except ImportError:
-    EmailValidator = SimpleEmailValidator
-
 class RegistrationForm(FlaskForm):
     """Form for voter registration"""
     username = StringField('Username', validators=[DataRequired(), Length(min=3, max=80)])
-    email = StringField('Email', validators=[DataRequired(), EmailValidator()])
+    email = StringField('Email', validators=[DataRequired(), SimpleEmailValidator()])
     password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     first_name = StringField('First Name', validators=[DataRequired(), Length(max=50)])
