@@ -43,6 +43,23 @@ This creates an admin user with credentials:
 - Open your browser and go to: http://127.0.0.1:8080
 - Register a new voter account or login as admin
 
+## Debugging Tools
+
+### Database Check
+```bash
+# Check database connection and tables
+python check_database.py
+
+# Initialize database tables
+python check_database.py init
+```
+
+### Registration Test
+```bash
+# Test registration functionality
+python test_registration.py
+```
+
 ## Common Issues and Solutions
 
 ### 1. Email Configuration Error
@@ -59,7 +76,9 @@ This creates an admin user with credentials:
 ### 2. Database Issues
 **Error**: Database not found or tables missing
 
-**Solution**: The database is automatically created when you run the application for the first time.
+**Solution**: 
+- Run `python check_database.py init` to initialize the database
+- The database is automatically created when you run the application for the first time
 
 ### 3. Port Already in Use
 **Error**: Port 8080 already in use
@@ -82,6 +101,23 @@ This creates an admin user with credentials:
 - This has been fixed in the latest version
 - The application now properly handles date fields in registration forms
 - If you encounter this error, make sure you're using the latest code
+
+### 6. Internal Server Error on Registration (Render)
+**Error**: Internal Server Error during voter registration
+
+**Solution**:
+- The application now includes comprehensive error handling
+- Check the application logs for specific error messages
+- Run `python test_registration.py` to verify functionality
+- Ensure database is properly initialized with `python check_database.py init`
+
+### 7. PostgreSQL Connection Issues (Render)
+**Error**: Database connection failures on Render
+
+**Solution**:
+- The application now properly handles Render's PostgreSQL URL format
+- Added `psycopg2-binary` to requirements for PostgreSQL support
+- Database connection pooling is configured for better reliability
 
 ## Features
 
@@ -108,6 +144,8 @@ This creates an admin user with credentials:
 | `MAIL_PASSWORD` | Mailtrap password | `your-mailtrap-password` |
 | `MAIL_DISABLED` | Disable email functionality | `false` |
 | `PORT` | Application port | `8080` |
+| `FLASK_ENV` | Flask environment | `development` |
+| `FLASK_DEBUG` | Flask debug mode | `true` |
 
 ## Project Structure
 
@@ -119,6 +157,8 @@ vote/
 ├── blockchain.py          # Blockchain implementation
 ├── run_dev.py            # Development server script
 ├── create_admin.py       # Admin user creation script
+├── check_database.py     # Database debugging script
+├── test_registration.py  # Registration testing script
 ├── requirements.txt      # Python dependencies
 ├── templates/            # HTML templates
 ├── instance/             # Database files (auto-created)
@@ -158,11 +198,14 @@ vote/
 - Check if all dependencies are installed
 - Ensure you're in the virtual environment
 - Check if port 8080 is available
+- Run `python check_database.py` to verify database
 
 ### Registration fails
 - Check if email is properly configured
 - Use development mode if email setup is problematic
 - Check browser console for JavaScript errors
+- Run `python test_registration.py` to test functionality
+- Check application logs for specific error messages
 
 ### Admin features not working
 - Ensure you're logged in as an admin user
@@ -174,10 +217,17 @@ vote/
 - Try mining pending transactions manually
 - Validate the blockchain integrity
 
+### Render Deployment Issues
+- Check Render logs for specific error messages
+- Ensure all environment variables are set correctly
+- Verify database initialization with `python check_database.py init`
+- Test registration functionality with `python test_registration.py`
+
 ## Support
 
 If you encounter any issues:
 1. Check this setup guide
 2. Look at the application logs
-3. Verify all dependencies are installed
-4. Ensure database is properly initialized 
+3. Run the debugging scripts: `check_database.py` and `test_registration.py`
+4. Verify all dependencies are installed
+5. Ensure database is properly initialized 
