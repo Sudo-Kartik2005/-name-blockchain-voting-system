@@ -4,25 +4,11 @@ from wtforms.validators import DataRequired, Length, EqualTo, ValidationError
 from models import Voter, Election, Candidate
 from datetime import datetime
 from wtforms.fields import DateTimeLocalField
-import re
-
-# Custom email validator that doesn't require email_validator package
-class SimpleEmailValidator:
-    def __init__(self, message=None):
-        self.message = message or 'Invalid email address.'
-    
-    def __call__(self, form, field):
-        email = field.data
-        if email:
-            # Simple email regex pattern
-            pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-            if not re.match(pattern, email):
-                raise ValidationError(self.message)
 
 class RegistrationForm(FlaskForm):
     """Form for voter registration"""
     username = StringField('Username', validators=[DataRequired(), Length(min=3, max=80)])
-    email = StringField('Email', validators=[DataRequired(), SimpleEmailValidator()])
+    email = StringField('Email', validators=[DataRequired()])  # Temporarily removed email validation
     password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     first_name = StringField('First Name', validators=[DataRequired(), Length(max=50)])
@@ -37,9 +23,16 @@ class RegistrationForm(FlaskForm):
             raise ValidationError('Username already taken. Please choose a different one.')
     
     def validate_email(self, email):
+        import re
         voter = Voter.query.filter_by(email=email.data).first()
         if voter:
             raise ValidationError('Email already registered. Please use a different one.')
+        
+        # Basic email validation
+        if email.data:
+            pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(pattern, email.data):
+                raise ValidationError('Please enter a valid email address.')
     
     def validate_voter_id(self, voter_id):
         voter = Voter.query.filter_by(voter_id=voter_id.data).first()
