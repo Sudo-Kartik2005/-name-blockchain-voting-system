@@ -74,19 +74,26 @@ def datetime_filter(timestamp):
 def internal_error(error):
     """Handle internal server errors"""
     print(f"Internal Server Error: {error}")
-    db.session.rollback()
-    return render_template('error.html', error="Internal Server Error"), 500
+    try:
+        db.session.rollback()
+    except:
+        pass
+    return "Internal Server Error - Please try again later", 500
 
 @app.errorhandler(404)
 def not_found_error(error):
     """Handle 404 errors"""
-    return render_template('error.html', error="Page Not Found"), 404
+    return "Page Not Found", 404
 
 @app.errorhandler(Exception)
 def handle_exception(e):
     """Handle all unhandled exceptions"""
     print(f"Unhandled exception: {e}")
-    return render_template('error.html', error="An unexpected error occurred"), 500
+    try:
+        db.session.rollback()
+    except:
+        pass
+    return "An unexpected error occurred", 500
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -96,33 +103,52 @@ def init_db():
     """Initialize the database with tables"""
     try:
         with app.app_context():
+            print("Starting database initialization...")
+            
             # Ensure instance directory exists
             instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
             if not os.path.exists(instance_path):
                 os.makedirs(instance_path)
+                print(f"Created instance directory: {instance_path}")
             
             # Create all tables
+            print("Creating database tables...")
             db.create_all()
             print("Database tables created successfully")
             
-            # Create initial blockchain state if it doesn't exist
-            if not BlockchainState.query.first():
-                blockchain_state = BlockchainState()
-                db.session.add(blockchain_state)
-                db.session.commit()
-                print("Initial blockchain state created")
+            # Try to create initial blockchain state if it doesn't exist
+            try:
+                if not BlockchainState.query.first():
+                    print("Creating initial blockchain state...")
+                    blockchain_state = BlockchainState()
+                    db.session.add(blockchain_state)
+                    db.session.commit()
+                    print("Initial blockchain state created")
+                else:
+                    print("Blockchain state already exists")
+            except Exception as e:
+                print(f"Warning: Could not create blockchain state: {e}")
+                # Continue without blockchain state - it's not critical for basic functionality
             
             print("Database initialization completed successfully")
             
     except Exception as e:
         print(f"Error during database initialization: {e}")
+        print(f"Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        
         # Try to create tables without the blockchain state
         try:
+            print("Attempting basic database initialization...")
             with app.app_context():
                 db.create_all()
                 print("Basic database tables created (blockchain state creation failed)")
         except Exception as e2:
             print(f"Critical database initialization error: {e2}")
+            print(f"Error type: {type(e2).__name__}")
+            import traceback
+            traceback.print_exc()
             raise
 
 def mine_pending_transactions():
@@ -191,60 +217,88 @@ def index():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     """Voter registration with OTP verification"""
+    print("=== Registration Route Called ===")
     try:
         if current_user.is_authenticated:
+            print("User already authenticated, redirecting to index")
             return redirect(url_for('index'))
         
+        print("Creating registration form")
         form = RegistrationForm()
-        if form.validate_on_submit():
-            try:
-                import random
-                otp = str(random.randint(100000, 999999))
-                
-                # Validate date_of_birth before storing in session
-                if not form.date_of_birth.data:
-                    flash('Date of birth is required.', 'error')
-                    return render_template('register.html', form=form)
-                
-                # Store registration data and OTP in session
-                session['registration_data'] = {
-                    'username': form.username.data,
-                    'email': form.email.data,
-                    'password_hash': generate_password_hash(form.password.data),
-                    'first_name': form.first_name.data,
-                    'last_name': form.last_name.data,
-                    'date_of_birth': form.date_of_birth.data.isoformat(),
-                    'voter_id': form.voter_id.data
-                }
-                session['otp'] = otp
-                session['otp_email'] = form.email.data
-                
-                # Send OTP email via Mailtrap
-                if app.config.get('MAIL_DISABLED', False):
-                    # Email disabled for development/production
-                    flash(f'Email disabled. Your OTP is: {otp}', 'info')
-                else:
-                    try:
-                        msg = Message('Your OTP Code', recipients=[form.email.data])
-                        msg.body = f'Your OTP code for registration is: {otp}'
-                        mail.send(msg)
-                        flash('An OTP has been sent to your email. Please enter it to complete registration.', 'info')
-                    except Exception as e:
-                        # Fallback: store OTP in session and show it to user
-                        print(f"Email sending failed: {e}")
-                        flash(f'Email sending failed. Your OTP is: {otp}', 'warning')
-                
-                return redirect(url_for('verify_otp'))
-                
-            except Exception as e:
-                print(f"Error in registration form processing: {e}")
-                flash('An error occurred during registration. Please try again.', 'error')
-                return render_template('register.html', form=form)
         
+        if request.method == 'POST':
+            print("POST request received")
+            print(f"Form data: {request.form}")
+            
+            if form.validate_on_submit():
+                print("Form validation passed")
+                try:
+                    import random
+                    otp = str(random.randint(100000, 999999))
+                    print(f"Generated OTP: {otp}")
+                    
+                    # Validate date_of_birth before storing in session
+                    if not form.date_of_birth.data:
+                        print("Date of birth is missing")
+                        flash('Date of birth is required.', 'error')
+                        return render_template('register.html', form=form)
+                    
+                    print("Storing registration data in session")
+                    # Store registration data and OTP in session
+                    session['registration_data'] = {
+                        'username': form.username.data,
+                        'email': form.email.data,
+                        'password_hash': generate_password_hash(form.password.data),
+                        'first_name': form.first_name.data,
+                        'last_name': form.last_name.data,
+                        'date_of_birth': form.date_of_birth.data.isoformat(),
+                        'voter_id': form.voter_id.data
+                    }
+                    session['otp'] = otp
+                    session['otp_email'] = form.email.data
+                    
+                    print("Session data stored successfully")
+                    
+                    # Send OTP email via Mailtrap
+                    if app.config.get('MAIL_DISABLED', False):
+                        # Email disabled for development/production
+                        print("Email disabled, showing OTP in flash message")
+                        flash(f'Email disabled. Your OTP is: {otp}', 'info')
+                    else:
+                        try:
+                            print("Attempting to send email")
+                            msg = Message('Your OTP Code', recipients=[form.email.data])
+                            msg.body = f'Your OTP code for registration is: {otp}'
+                            mail.send(msg)
+                            flash('An OTP has been sent to your email. Please enter it to complete registration.', 'info')
+                            print("Email sent successfully")
+                        except Exception as e:
+                            # Fallback: store OTP in session and show it to user
+                            print(f"Email sending failed: {e}")
+                            flash(f'Email sending failed. Your OTP is: {otp}', 'warning')
+                    
+                    print("Redirecting to OTP verification")
+                    return redirect(url_for('verify_otp'))
+                    
+                except Exception as e:
+                    print(f"Error in registration form processing: {e}")
+                    print(f"Error type: {type(e).__name__}")
+                    import traceback
+                    traceback.print_exc()
+                    flash('An error occurred during registration. Please try again.', 'error')
+                    return render_template('register.html', form=form)
+            else:
+                print("Form validation failed")
+                print(f"Form errors: {form.errors}")
+        
+        print("Rendering registration template")
         return render_template('register.html', form=form)
         
     except Exception as e:
         print(f"Critical error in registration route: {e}")
+        print(f"Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
         flash('A system error occurred. Please try again later.', 'error')
         return render_template('register.html', form=RegistrationForm())
 
@@ -600,6 +654,35 @@ def admin_blockchain():
                          pending_count=pending_count,
                          chain_length=len(blockchain.chain),
                          chain_data=chain_data)
+
+@app.route('/test')
+def test_route():
+    """Simple test route to verify application is working"""
+    return jsonify({
+        'message': 'Application is working!',
+        'timestamp': datetime.utcnow().isoformat(),
+        'database_uri': app.config['SQLALCHEMY_DATABASE_URI'].replace('://', '://***:***@') if '@' in app.config['SQLALCHEMY_DATABASE_URI'] else app.config['SQLALCHEMY_DATABASE_URI']
+    })
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint for debugging"""
+    try:
+        # Test database connection
+        with db.engine.connect() as conn:
+            conn.execute(db.text('SELECT 1'))
+        
+        return jsonify({
+            'status': 'healthy',
+            'database': 'connected',
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
 
 @app.route('/api/blockchain')
 def api_blockchain():
