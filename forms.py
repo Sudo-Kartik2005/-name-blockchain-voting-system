@@ -8,7 +8,7 @@ from wtforms.fields import DateTimeLocalField
 class RegistrationForm(FlaskForm):
     """Form for voter registration"""
     username = StringField('Username', validators=[DataRequired(), Length(min=3, max=80)])
-    email = StringField('Email', validators=[DataRequired()])  # No Email() validator
+    email = StringField('Email', validators=[DataRequired()])  # Only DataRequired, no email validation
     password = PasswordField('Password', validators=[DataRequired(), Length(min=6)])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     first_name = StringField('First Name', validators=[DataRequired(), Length(max=50)])
@@ -21,18 +21,6 @@ class RegistrationForm(FlaskForm):
         voter = Voter.query.filter_by(username=username.data).first()
         if voter:
             raise ValidationError('Username already taken. Please choose a different one.')
-    
-    def validate_email(self, email):
-        import re
-        voter = Voter.query.filter_by(email=email.data).first()
-        if voter:
-            raise ValidationError('Email already registered. Please use a different one.')
-        
-        # Basic email validation using regex
-        if email.data:
-            pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-            if not re.match(pattern, email.data):
-                raise ValidationError('Please enter a valid email address.')
     
     def validate_voter_id(self, voter_id):
         voter = Voter.query.filter_by(voter_id=voter_id.data).first()

@@ -233,6 +233,22 @@ def register():
             if form.validate_on_submit():
                 print("Form validation passed")
                 try:
+                    # Manual email validation
+                    import re
+                    email = form.email.data
+                    if email:
+                        # Check if email is already registered
+                        existing_voter = Voter.query.filter_by(email=email).first()
+                        if existing_voter:
+                            flash('Email already registered. Please use a different one.', 'error')
+                            return render_template('register.html', form=form)
+                        
+                        # Basic email format validation
+                        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+                        if not re.match(pattern, email):
+                            flash('Please enter a valid email address.', 'error')
+                            return render_template('register.html', form=form)
+                    
                     import random
                     otp = str(random.randint(100000, 999999))
                     print(f"Generated OTP: {otp}")
