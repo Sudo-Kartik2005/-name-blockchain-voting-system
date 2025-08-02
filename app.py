@@ -779,6 +779,18 @@ def admin_blockchain():
                          chain_length=len(blockchain.chain),
                          chain_data=chain_data)
 
+@app.route('/test-simple')
+def test_simple():
+    """Test route to verify simple registration is accessible"""
+    return jsonify({
+        'message': 'Simple registration route is accessible!',
+        'routes': {
+            'simple_registration': '/register-simple',
+            'original_registration': '/register'
+        },
+        'timestamp': datetime.utcnow().isoformat()
+    })
+
 @app.route('/test')
 def test_route():
     """Simple test route to verify application is working"""

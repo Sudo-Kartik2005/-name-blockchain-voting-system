@@ -1,12 +1,19 @@
 #!/bin/bash
-echo "Installing Python dependencies..."
-pip install -r requirements.txt
+# Build script to force correct dependency installation
 
-echo "Installing gunicorn explicitly..."
-pip install gunicorn==21.2.0
+echo "=== Starting Build Process ==="
 
-echo "Verifying gunicorn installation..."
-which gunicorn
-gunicorn --version
+# Clear pip cache
+pip cache purge
 
-echo "Build completed successfully!" 
+# Uninstall WTForms if it exists
+pip uninstall -y WTForms
+
+# Install dependencies with force reinstall
+pip install --force-reinstall --no-cache-dir -r requirements.txt
+
+# Verify WTForms version
+echo "=== Checking WTForms Version ==="
+python -c "import wtforms; print(f'WTForms version: {wtforms.__version__}')"
+
+echo "=== Build Complete ===" 
