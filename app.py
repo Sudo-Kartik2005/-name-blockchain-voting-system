@@ -11,6 +11,7 @@ from datetime import datetime, timedelta
 import os
 from flask_mail import Mail, Message
 
+# Initialize Flask app
 app = Flask(__name__)
 # Load secret key from environment variable for production
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-change-this-in-production')
@@ -33,6 +34,11 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
     'pool_recycle': 300,
 }
+
+# Add a very simple test route immediately after app creation
+@app.route('/hello')
+def hello():
+    return "Hello! The app is working!"
 
 # Initialize extensions
 db.init_app(app)
