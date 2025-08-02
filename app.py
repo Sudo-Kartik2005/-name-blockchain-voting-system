@@ -214,6 +214,15 @@ def index():
     active_elections = Election.query.filter_by(is_active=True).all()
     return render_template('index.html', elections=active_elections)
 
+@app.route('/ping')
+def ping():
+    """Simple ping route to test if application is working"""
+    return jsonify({
+        'status': 'pong',
+        'message': 'Application is running!',
+        'timestamp': datetime.utcnow().isoformat()
+    })
+
 @app.route('/register-simple', methods=['GET', 'POST'])
 def register_simple():
     """Simple registration without WTForms to avoid email_validator issues"""
