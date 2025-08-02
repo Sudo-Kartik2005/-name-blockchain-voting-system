@@ -40,6 +40,24 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 def hello():
     return "Hello! The app is working!"
 
+# Add a debug route to check deployment status
+@app.route('/debug')
+def debug():
+    return f"""
+    <h1>Debug Information</h1>
+    <p>App is running!</p>
+    <p>Timestamp: {datetime.utcnow()}</p>
+    <p>Database URI: {app.config['SQLALCHEMY_DATABASE_URI'].replace('://', '://***:***@') if '@' in app.config['SQLALCHEMY_DATABASE_URI'] else app.config['SQLALCHEMY_DATABASE_URI']}</p>
+    <p>Available routes:</p>
+    <ul>
+        <li><a href="/hello">/hello</a></li>
+        <li><a href="/ping">/ping</a></li>
+        <li><a href="/test">/test</a></li>
+        <li><a href="/test-simple">/test-simple</a></li>
+        <li><a href="/register-simple">/register-simple</a></li>
+    </ul>
+    """
+
 # Initialize extensions
 db.init_app(app)
 login_manager = LoginManager()
