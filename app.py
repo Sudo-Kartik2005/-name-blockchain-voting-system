@@ -40,6 +40,11 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 def hello():
     return "Hello! The app is working!"
 
+# Add a super simple test route that doesn't depend on anything
+@app.route('/simple')
+def simple():
+    return "SUCCESS: Basic Flask route is working!"
+
 # Add a debug route to check deployment status
 @app.route('/debug')
 def debug():
