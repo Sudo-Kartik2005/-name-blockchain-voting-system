@@ -214,6 +214,114 @@ def index():
     active_elections = Election.query.filter_by(is_active=True).all()
     return render_template('index.html', elections=active_elections)
 
+@app.route('/register-simple', methods=['GET', 'POST'])
+def register_simple():
+    """Simple registration without WTForms to avoid email_validator issues"""
+    print("=== Simple Registration Route Called ===")
+    try:
+        if current_user.is_authenticated:
+            return redirect(url_for('index'))
+        
+        if request.method == 'POST':
+            print("POST request received")
+            print(f"Form data: {request.form}")
+            
+            # Get form data
+            username = request.form.get('username')
+            email = request.form.get('email')
+            password = request.form.get('password')
+            confirm_password = request.form.get('confirm_password')
+            first_name = request.form.get('first_name')
+            last_name = request.form.get('last_name')
+            date_of_birth = request.form.get('date_of_birth')
+            voter_id = request.form.get('voter_id')
+            
+            # Basic validation
+            if not all([username, email, password, confirm_password, first_name, last_name, date_of_birth, voter_id]):
+                flash('All fields are required.', 'error')
+                return render_template('register_simple.html')
+            
+            if password != confirm_password:
+                flash('Passwords do not match.', 'error')
+                return render_template('register_simple.html')
+            
+            if len(password) < 6:
+                flash('Password must be at least 6 characters long.', 'error')
+                return render_template('register_simple.html')
+            
+            if len(username) < 3:
+                flash('Username must be at least 3 characters long.', 'error')
+                return render_template('register_simple.html')
+            
+            # Email validation
+            import re
+            pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(pattern, email):
+                flash('Please enter a valid email address.', 'error')
+                return render_template('register_simple.html')
+            
+            # Check if user already exists
+            existing_voter = Voter.query.filter_by(username=username).first()
+            if existing_voter:
+                flash('Username already taken. Please choose a different one.', 'error')
+                return render_template('register_simple.html')
+            
+            existing_email = Voter.query.filter_by(email=email).first()
+            if existing_email:
+                flash('Email already registered. Please use a different one.', 'error')
+                return render_template('register_simple.html')
+            
+            existing_voter_id = Voter.query.filter_by(voter_id=voter_id).first()
+            if existing_voter_id:
+                flash('Voter ID already registered.', 'error')
+                return render_template('register_simple.html')
+            
+            try:
+                # Convert date string to date object
+                from datetime import datetime
+                dob = datetime.strptime(date_of_birth, '%Y-%m-%d').date()
+                if dob > datetime.now().date():
+                    flash('Date of birth cannot be in the future.', 'error')
+                    return render_template('register_simple.html')
+            except ValueError:
+                flash('Please enter a valid date of birth.', 'error')
+                return render_template('register_simple.html')
+            
+            # Generate OTP
+            import random
+            otp = str(random.randint(100000, 999999))
+            print(f"Generated OTP: {otp}")
+            
+            # Store in session
+            session['registration_data'] = {
+                'username': username,
+                'email': email,
+                'password_hash': generate_password_hash(password),
+                'first_name': first_name,
+                'last_name': last_name,
+                'date_of_birth': date_of_birth,
+                'voter_id': voter_id
+            }
+            session['otp'] = otp
+            session['otp_email'] = email
+            
+            print("Session data stored successfully")
+            
+            # Show OTP (email disabled)
+            flash(f'Email disabled. Your OTP is: {otp}', 'info')
+            
+            return redirect(url_for('verify_otp'))
+        
+        return render_template('register_simple.html')
+        
+    except Exception as e:
+        print(f"Critical error in simple registration route: {e}")
+        print(f"Error type: {type(e).__name__}")
+        import traceback
+        traceback.print_exc()
+        flash('A system error occurred. Please try again later.', 'error')
+        return render_template('register_simple.html')
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     """Voter registration with OTP verification"""
