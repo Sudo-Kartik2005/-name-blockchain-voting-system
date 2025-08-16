@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: blockchain-voting-system
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements-prod.txt
+    startCommand: gunicorn --config gunicorn.conf.py wsgi:application
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.0
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: voting-system-db
+          property: connectionString
+      - key: LOG_LEVEL
+        value: INFO
+      - key: BLOCKCHAIN_MINING_INTERVAL
+        value: "10"
+    healthCheckPath: /health
+    autoDeploy: true
+
+databases:
+  - name: voting-system-db
+    databaseName: voting_system
+    user: voting_user
+    plan: free
