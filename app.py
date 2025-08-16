@@ -9,7 +9,7 @@ import threading
 import time
 from datetime import datetime, timedelta
 import os
-from flask_mail import Mail, Message
+
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -19,12 +19,15 @@ if app.config['SECRET_KEY'] == 'your-secret-key-change-this-in-production':
     import warnings
     warnings.warn('WARNING: Using default SECRET_KEY! Set SECRET_KEY environment variable for production.')
 
+# Session configuration
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
 # Use environment variable for database URI if set
 database_url = os.environ.get('DATABASE_URL')
 if database_url:
-    # Handle Render's PostgreSQL URL format
-    if database_url.startswith('postgres://'):
-        database_url = database_url.replace('postgres://', 'postgresql://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance', 'voting_system.db')}"
@@ -68,17 +71,10 @@ db.init_app(app)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in to access this page.'
+login_manager.login_message_category = 'info'
 
-# Initialize Flask-Mail
-mail = Mail()
-app.config['MAIL_SERVER'] = 'smtp.mailtrap.io'
-app.config['MAIL_PORT'] = 2525
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USE_SSL'] = False
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'your-mailtrap-username')
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', 'your-mailtrap-password')
-app.config['MAIL_DISABLED'] = os.environ.get('MAIL_DISABLED', 'false').lower() == 'true'
-mail.init_app(app)
+
 
 # Initialize blockchain
 blockchain = Blockchain()
@@ -126,7 +122,19 @@ def handle_exception(e):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return Voter.query.get(user_id)
+    print(f"=== Loading user with ID: {user_id} ===")
+    try:
+        voter = Voter.query.get(user_id)
+        if voter:
+            print(f"User loaded successfully: {voter.username}")
+            print(f"User ID: {voter.id}")
+            print(f"User authenticated: {hasattr(voter, 'is_authenticated')}")
+        else:
+            print(f"No user found with ID: {user_id}")
+        return voter
+    except Exception as e:
+        print(f"Error loading user: {e}")
+        return None
 
 def init_db():
     """Initialize the database with tables"""
@@ -240,7 +248,22 @@ def mine_pending_transactions():
 @app.route('/')
 def index():
     """Home page"""
+    print("=== Index Route Called ===")
+    print(f"Current user authenticated: {current_user.is_authenticated}")
+    print(f"Current user type: {type(current_user)}")
+    
+    if current_user.is_authenticated:
+        print(f"Current user: {current_user.username}")
+        print(f"Current user ID: {current_user.id}")
+        print(f"Current user class: {current_user.__class__.__name__}")
+    else:
+        print("No user authenticated")
+        print(f"Current user: {current_user}")
+        print(f"Current user type: {type(current_user)}")
+    
     active_elections = Election.query.filter_by(is_active=True).all()
+    print(f"Found {len(active_elections)} active elections")
+    
     return render_template('index.html', elections=active_elections)
 
 @app.route('/ping')
@@ -325,12 +348,7 @@ def register_simple():
                 flash('Please enter a valid date of birth.', 'error')
                 return render_template('register_simple.html')
             
-            # Generate OTP
-            import random
-            otp = str(random.randint(100000, 999999))
-            print(f"Generated OTP: {otp}")
-            
-            # Store in session
+            # Store in session for direct registration
             session['registration_data'] = {
                 'username': username,
                 'email': email,
@@ -340,15 +358,54 @@ def register_simple():
                 'date_of_birth': date_of_birth,
                 'voter_id': voter_id
             }
-            session['otp'] = otp
-            session['otp_email'] = email
             
             print("Session data stored successfully")
             
-            # Show OTP (email disabled)
-            flash(f'Email disabled. Your OTP is: {otp}', 'info')
-            
-            return redirect(url_for('verify_otp'))
+            # Complete registration directly
+            try:
+                # Convert date string to Python date object
+                from datetime import date
+                dob = date.fromisoformat(date_of_birth)
+                
+                # Check if user already exists
+                existing_voter = Voter.query.filter_by(username=username).first()
+                if existing_voter:
+                    flash('Username already exists. Please try again.', 'error')
+                    return render_template('register_simple.html')
+                
+                existing_email = Voter.query.filter_by(email=email).first()
+                if existing_email:
+                    flash('Email already registered. Please try again.', 'error')
+                    return render_template('register_simple.html')
+                
+                existing_voter_id = Voter.query.filter_by(voter_id=voter_id).first()
+                if existing_voter_id:
+                    flash('Voter ID already registered. Please try again.', 'error')
+                    return render_template('register_simple.html')
+                
+                voter = Voter(
+                    username=username,
+                    email=email,
+                    password_hash=generate_password_hash(password),
+                    first_name=first_name,
+                    last_name=last_name,
+                    date_of_birth=dob,
+                    voter_id=voter_id
+                )
+                db.session.add(voter)
+                db.session.commit()
+                
+                # Clear session
+                session.pop('registration_data', None)
+                
+                flash('Registration successful! Please log in.', 'success')
+                return redirect(url_for('login'))
+                
+            except Exception as e:
+                print(f"Database error during voter creation: {e}")
+                db.session.rollback()
+                flash('An error occurred while creating your account. Please try again.', 'error')
+                return render_template('register_simple.html')
         
         return render_template('register_simple.html')
         
@@ -362,7 +419,7 @@ def register_simple():
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    """Voter registration with OTP verification"""
+    """Voter registration"""
     print("=== Registration Route Called ===")
     try:
         if current_user.is_authenticated:
@@ -395,10 +452,6 @@ def register():
                             flash('Please enter a valid email address.', 'error')
                             return render_template('register.html', form=form)
                     
-                    import random
-                    otp = str(random.randint(100000, 999999))
-                    print(f"Generated OTP: {otp}")
-                    
                     # Validate date_of_birth before storing in session
                     if not form.date_of_birth.data:
                         print("Date of birth is missing")
@@ -406,7 +459,7 @@ def register():
                         return render_template('register.html', form=form)
                     
                     print("Storing registration data in session")
-                    # Store registration data and OTP in session
+                    # Store registration data in session for direct registration
                     session['registration_data'] = {
                         'username': form.username.data,
                         'email': form.email.data,
@@ -416,31 +469,50 @@ def register():
                         'date_of_birth': form.date_of_birth.data.isoformat(),
                         'voter_id': form.voter_id.data
                     }
-                    session['otp'] = otp
-                    session['otp_email'] = form.email.data
                     
                     print("Session data stored successfully")
                     
-                    # Send OTP email via Mailtrap
-                    if app.config.get('MAIL_DISABLED', False):
-                        # Email disabled for development/production
-                        print("Email disabled, showing OTP in flash message")
-                        flash(f'Email disabled. Your OTP is: {otp}', 'info')
-                    else:
-                        try:
-                            print("Attempting to send email")
-                            msg = Message('Your OTP Code', recipients=[form.email.data])
-                            msg.body = f'Your OTP code for registration is: {otp}'
-                            mail.send(msg)
-                            flash('An OTP has been sent to your email. Please enter it to complete registration.', 'info')
-                            print("Email sent successfully")
-                        except Exception as e:
-                            # Fallback: store OTP in session and show it to user
-                            print(f"Email sending failed: {e}")
-                            flash(f'Email sending failed. Your OTP is: {otp}', 'warning')
-                    
-                    print("Redirecting to OTP verification")
-                    return redirect(url_for('verify_otp'))
+                    # Complete registration directly
+                    try:
+                        # Check if user already exists
+                        existing_voter = Voter.query.filter_by(username=form.username.data).first()
+                        if existing_voter:
+                            flash('Username already exists. Please try again.', 'error')
+                            return render_template('register.html', form=form)
+                        
+                        existing_email = Voter.query.filter_by(email=form.email.data).first()
+                        if existing_email:
+                            flash('Email already registered. Please try again.', 'error')
+                            return render_template('register.html', form=form)
+                        
+                        existing_voter_id = Voter.query.filter_by(voter_id=form.voter_id.data).first()
+                        if existing_voter_id:
+                            flash('Voter ID already registered. Please try again.', 'error')
+                            return render_template('register.html', form=form)
+                        
+                        voter = Voter(
+                            username=form.username.data,
+                            email=form.email.data,
+                            password_hash=generate_password_hash(form.password.data),
+                            first_name=form.first_name.data,
+                            last_name=form.last_name.data,
+                            date_of_birth=form.date_of_birth.data,
+                            voter_id=form.voter_id.data
+                        )
+                        db.session.add(voter)
+                        db.session.commit()
+                        
+                        # Clear session
+                        session.pop('registration_data', None)
+                        
+                        flash('Registration successful! Please log in.', 'success')
+                        return redirect(url_for('login'))
+                        
+                    except Exception as e:
+                        print(f"Database error during voter creation: {e}")
+                        db.session.rollback()
+                        flash('An error occurred while creating your account. Please try again.', 'error')
+                        return render_template('register.html', form=form)
                     
                 except Exception as e:
                     print(f"Error in registration form processing: {e}")
@@ -464,98 +536,75 @@ def register():
         flash('A system error occurred. Please try again later.', 'error')
         return render_template('register.html', form=RegistrationForm())
 
-@app.route('/verify-otp', methods=['GET', 'POST'])
-def verify_otp():
-    """OTP verification for registration"""
-    try:
-        if 'registration_data' not in session or 'otp' not in session:
-            flash('No registration in progress. Please register again.', 'error')
-            return redirect(url_for('register'))
-        
-        if request.method == 'POST':
-            try:
-                entered_otp = request.form.get('otp')
-                if entered_otp == session.get('otp'):
-                    # Complete registration
-                    data = session['registration_data']
-                    
-                    try:
-                        # Convert date string to Python date object
-                        from datetime import date
-                        date_of_birth = date.fromisoformat(data['date_of_birth'])
-                        
-                        # Check if user already exists
-                        existing_voter = Voter.query.filter_by(username=data['username']).first()
-                        if existing_voter:
-                            flash('Username already exists. Please try again.', 'error')
-                            return redirect(url_for('register'))
-                        
-                        existing_email = Voter.query.filter_by(email=data['email']).first()
-                        if existing_email:
-                            flash('Email already registered. Please try again.', 'error')
-                            return redirect(url_for('register'))
-                        
-                        existing_voter_id = Voter.query.filter_by(voter_id=data['voter_id']).first()
-                        if existing_voter_id:
-                            flash('Voter ID already registered. Please try again.', 'error')
-                            return redirect(url_for('register'))
-                        
-                        voter = Voter(
-                            username=data['username'],
-                            email=data['email'],
-                            password_hash=data['password_hash'],
-                            first_name=data['first_name'],
-                            last_name=data['last_name'],
-                            date_of_birth=date_of_birth,
-                            voter_id=data['voter_id']
-                        )
-                        db.session.add(voter)
-                        db.session.commit()
-                        
-                        # Clear session
-                        session.pop('registration_data', None)
-                        session.pop('otp', None)
-                        session.pop('otp_email', None)
-                        
-                        flash('Registration successful! Please log in.', 'success')
-                        return redirect(url_for('login'))
-                        
-                    except Exception as e:
-                        print(f"Database error during voter creation: {e}")
-                        db.session.rollback()
-                        flash('An error occurred while creating your account. Please try again.', 'error')
-                        return render_template('verify_otp.html')
-                        
-                else:
-                    flash('Invalid OTP. Please try again.', 'error')
-                    
-            except Exception as e:
-                print(f"Error in OTP verification: {e}")
-                flash('An error occurred during verification. Please try again.', 'error')
-                
-        return render_template('verify_otp.html')
-        
-    except Exception as e:
-        print(f"Critical error in OTP verification route: {e}")
-        flash('A system error occurred. Please try again later.', 'error')
-        return redirect(url_for('register'))
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Voter login"""
+    print("=== Login Route Called ===")
+    
     if current_user.is_authenticated:
+        print(f"User already authenticated: {current_user.username}")
         return redirect(url_for('index'))
     
     form = LoginForm()
-    if form.validate_on_submit():
-        voter = Voter.query.filter_by(username=form.username.data).first()
-        if voter and check_password_hash(voter.password_hash, form.password.data):
-            login_user(voter, remember=form.remember_me.data)
-            next_page = request.args.get('next')
-            return redirect(next_page) if next_page else redirect(url_for('index'))
+    if request.method == 'POST':
+        print("POST request received in login")
+        print(f"Form data: {request.form}")
+        
+        if form.validate_on_submit():
+            print("Form validation passed")
+            username = form.username.data
+            password = form.password.data
+            
+            print(f"Attempting login for username: {username}")
+            
+            # Find voter by username
+            voter = Voter.query.filter_by(username=username).first()
+            
+            if voter:
+                print(f"Voter found: {voter.username}, checking password...")
+                if check_password_hash(voter.password_hash, password):
+                    print("Password check passed, logging in user...")
+                    
+                    # Login the user
+                    login_user(voter, remember=form.remember_me.data)
+                    
+                    print(f"User logged in successfully: {voter.username}")
+                    print(f"User ID: {voter.id}")
+                    print(f"User authenticated: {current_user.is_authenticated}")
+                    
+                    # Test if user is still authenticated after login_user
+                    print(f"User authenticated after login_user: {current_user.is_authenticated}")
+                    if current_user.is_authenticated:
+                        print(f"Current user after login: {current_user.username}")
+                        print(f"Current user ID after login: {current_user.id}")
+                    else:
+                        print("WARNING: User not authenticated after login_user!")
+                    
+                    # Check session
+                    print(f"Session ID: {session.get('_id', 'NOT SET')}")
+                    print(f"Session data: {dict(session)}")
+                    
+                    # Get next page or redirect to index
+                    next_page = request.args.get('next')
+                    if next_page:
+                        print(f"Redirecting to next page: {next_page}")
+                        return redirect(next_page)
+                    else:
+                        print("Redirecting to index page")
+                        return redirect(url_for('index'))
+                else:
+                    print("Password check failed")
+                    flash('Invalid username or password', 'error')
+            else:
+                print(f"No voter found with username: {username}")
+                flash('Invalid username or password', 'error')
         else:
-            flash('Invalid username or password', 'error')
+            print(f"Form validation failed: {form.errors}")
+            flash('Please correct the errors below.', 'error')
     
+    print("Rendering login template")
     return render_template('login.html', form=form)
 
 @app.route('/logout')
@@ -836,6 +885,55 @@ def test_route():
         'message': 'Application is working!',
         'timestamp': datetime.utcnow().isoformat(),
         'database_uri': app.config['SQLALCHEMY_DATABASE_URI'].replace('://', '://***:***@') if '@' in app.config['SQLALCHEMY_DATABASE_URI'] else app.config['SQLALCHEMY_DATABASE_URI']
+    })
+
+@app.route('/test-db')
+def test_db():
+    """Test database connection and user loading"""
+    try:
+        # Test database connection
+        with db.engine.connect() as conn:
+            conn.execute(db.text('SELECT 1'))
+        
+        # Test user query
+        voters = Voter.query.all()
+        voter_count = len(voters)
+        
+        return jsonify({
+            'status': 'success',
+            'database': 'connected',
+            'voter_count': voter_count,
+            'voters': [{'id': v.id, 'username': v.username, 'email': v.email} for v in voters[:5]],  # Show first 5 voters
+            'timestamp': datetime.utcnow().isoformat()
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'error': str(e),
+            'error_type': type(e).__name__,
+            'timestamp': datetime.utcnow().isoformat()
+        }), 500
+
+@app.route('/test-session')
+def test_session():
+    """Test session functionality"""
+    print("=== Testing Session ===")
+    print(f"Session ID: {session.get('_id', 'NOT SET')}")
+    print(f"Session data: {dict(session)}")
+    print(f"Current user authenticated: {current_user.is_authenticated}")
+    
+    if current_user.is_authenticated:
+        print(f"Current user: {current_user.username}")
+        print(f"Current user ID: {current_user.id}")
+    
+    return jsonify({
+        'session_id': session.get('_id', 'NOT SET'),
+        'session_data': dict(session),
+        'user_authenticated': current_user.is_authenticated,
+        'user_info': {
+            'username': current_user.username if current_user.is_authenticated else None,
+            'id': current_user.id if current_user.is_authenticated else None
+        } if current_user.is_authenticated else None
     })
 
 @app.route('/health')

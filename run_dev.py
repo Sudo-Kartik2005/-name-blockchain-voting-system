@@ -14,7 +14,7 @@ from app import app
 
 if __name__ == '__main__':
     print("Starting development server with email disabled...")
-    print("OTP codes will be displayed in flash messages instead of being sent via email.")
+    print("Application running in development mode.")
     print("Access the application at: http://127.0.0.1:8080")
     print("Press Ctrl+C to stop the server.")
     

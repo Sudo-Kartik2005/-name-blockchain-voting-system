@@ -23,7 +23,7 @@ pip install -r requirements.txt
 ```bash
 python run_dev.py
 ```
-This runs the application with email disabled. OTP codes will be displayed in flash messages.
+This runs the application in development mode.
 
 #### Option B: Production Mode
 ```bash
@@ -102,27 +102,12 @@ python test_registration.py
 - The application now properly handles date fields in registration forms
 - If you encounter this error, make sure you're using the latest code
 
-### 6. Internal Server Error on Registration (Render)
-**Error**: Internal Server Error during voter registration
 
-**Solution**:
-- The application now includes comprehensive error handling
-- Check the application logs for specific error messages
-- Run `python test_registration.py` to verify functionality
-- Ensure database is properly initialized with `python check_database.py init`
-
-### 7. PostgreSQL Connection Issues (Render)
-**Error**: Database connection failures on Render
-
-**Solution**:
-- The application now properly handles Render's PostgreSQL URL format
-- Added `psycopg2-binary` to requirements for PostgreSQL support
-- Database connection pooling is configured for better reliability
 
 ## Features
 
 ### For Voters:
-- Register with OTP verification
+- Register with direct verification
 - View active elections
 - Cast votes in elections
 - View election results
@@ -140,9 +125,7 @@ python test_registration.py
 |----------|-------------|---------|
 | `SECRET_KEY` | Flask secret key | `your-secret-key-change-this-in-production` |
 | `DATABASE_URL` | Database connection string | SQLite file in instance/ |
-| `MAIL_USERNAME` | Mailtrap username | `your-mailtrap-username` |
-| `MAIL_PASSWORD` | Mailtrap password | `your-mailtrap-password` |
-| `MAIL_DISABLED` | Disable email functionality | `false` |
+
 | `PORT` | Application port | `8080` |
 | `FLASK_ENV` | Flask environment | `development` |
 | `FLASK_DEBUG` | Flask debug mode | `true` |
@@ -170,7 +153,7 @@ vote/
 1. **Register a new voter**:
    - Go to http://127.0.0.1:8080/register
    - Fill in the registration form
-   - Use the OTP code displayed in the flash message
+   - Complete registration directly
 
 2. **Login as admin**:
    - Run `python create_admin.py`
@@ -201,8 +184,6 @@ vote/
 - Run `python check_database.py` to verify database
 
 ### Registration fails
-- Check if email is properly configured
-- Use development mode if email setup is problematic
 - Check browser console for JavaScript errors
 - Run `python test_registration.py` to test functionality
 - Check application logs for specific error messages
@@ -217,11 +198,7 @@ vote/
 - Try mining pending transactions manually
 - Validate the blockchain integrity
 
-### Render Deployment Issues
-- Check Render logs for specific error messages
-- Ensure all environment variables are set correctly
-- Verify database initialization with `python check_database.py init`
-- Test registration functionality with `python test_registration.py`
+
 
 ## Support
 
