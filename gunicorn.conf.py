@@ -1,11 +1,12 @@
 # Gunicorn configuration file for production deployment
+import os
 
 # Server socket
-bind = "0.0.0.0:8000"
+bind = "0.0.0.0:{}".format(os.environ.get("PORT", "8000"))
 backlog = 2048
 
-# Worker processes
-workers = 4  # Generally (2 x num_cores) + 1
+# Worker processes (reduced for free tier)
+workers = 1  # Free tier should use 1 worker
 worker_class = "sync"
 worker_connections = 1000
 max_requests = 1000

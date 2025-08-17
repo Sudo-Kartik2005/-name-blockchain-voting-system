@@ -4,7 +4,7 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn --config gunicorn.conf.py wsgi:application
+    startCommand: python -m gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 30 wsgi:application
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.4
@@ -20,6 +20,8 @@ services:
         value: INFO
       - key: BLOCKCHAIN_MINING_INTERVAL
         value: "10"
+      - key: PYTHONPATH
+        value: "."
     healthCheckPath: /health
     autoDeploy: true
 
