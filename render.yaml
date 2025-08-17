@@ -4,7 +4,7 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python -m gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 30 wsgi:application
+    startCommand: python render_start.py
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.4

@@ -15,6 +15,17 @@ if ! python -c "import flask" 2>/dev/null; then
     pip install -r requirements.txt
 fi
 
-# Start the application
+# Get the port from environment variable (Render sets this)
+PORT=${PORT:-8000}
+echo "Starting on port: $PORT"
+
+# Start the application with explicit configuration
 echo "Starting gunicorn..."
-python -m gunicorn --config gunicorn.conf.py wsgi:application
+python -m gunicorn \
+    --bind 0.0.0.0:$PORT \
+    --workers 1 \
+    --timeout 30 \
+    --access-logfile - \
+    --error-logfile - \
+    --log-level info \
+    wsgi:application
