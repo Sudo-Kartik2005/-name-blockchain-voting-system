@@ -4,10 +4,10 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python render_start.py
+    startCommand: gunicorn --config gunicorn.conf.py wsgi:application
     envVars:
       - key: PYTHON_VERSION
-        value: 3.13.4
+        value: 3.12.0
       - key: FLASK_ENV
         value: production
       - key: SECRET_KEY

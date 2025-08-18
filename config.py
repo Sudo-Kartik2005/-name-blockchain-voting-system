@@ -64,7 +64,11 @@ class ProductionConfig(Config):
     TESTING = False
     
     # Production database (PostgreSQL recommended)
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    # Normalize Render's postgres URL to SQLAlchemy's expected scheme
+    _raw_db_url = os.environ.get('DATABASE_URL')
+    if _raw_db_url and _raw_db_url.startswith('postgres://'):
+        _raw_db_url = _raw_db_url.replace('postgres://', 'postgresql://', 1)
+    SQLALCHEMY_DATABASE_URI = _raw_db_url
     
     # Production security settings
     SESSION_COOKIE_SECURE = True

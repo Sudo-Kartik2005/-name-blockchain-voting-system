@@ -10,7 +10,8 @@ import threading
 import time
 import json
 from datetime import datetime
-from config import get_config
+from config import get_config, ProductionConfig
+import os
 
 def create_app():
     """Application factory function"""
@@ -53,7 +54,7 @@ def create_app():
     init_database(app)
     
     # Start mining thread in production
-    if app.config.get('FLASK_ENV') == 'production':
+    if (config is ProductionConfig) or (os.environ.get('FLASK_ENV') == 'production'):
         start_mining_thread(app, blockchain)
     
     return app

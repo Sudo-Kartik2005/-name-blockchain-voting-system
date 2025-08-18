@@ -3,6 +3,7 @@
 Route functions for the Blockchain Voting System
 """
 from flask import render_template, request, redirect, url_for, flash, jsonify, session
+from sqlalchemy import text
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, Voter, Election, Candidate, Vote, BlockchainState, PendingTransaction
@@ -384,7 +385,7 @@ def health_check():
     """Health check endpoint for monitoring"""
     try:
         # Check database connection
-        db.session.execute('SELECT 1')
+        db.session.execute(text('SELECT 1'))
         
         return jsonify({
             'status': 'healthy',

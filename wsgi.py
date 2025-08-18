@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.environ['FLASK_ENV'] = 'production'
 
 # Import the app factory
-from app import create_app
+from app_factory import create_app
 
 # Create the application instance
 application = create_app()
