@@ -256,15 +256,38 @@ def admin_login():
     
     form = LoginForm()
     if request.method == 'POST' and form.validate_on_submit():
-        voter = Voter.query.filter_by(username=form.username.data).first()
-        if voter and check_password_hash(voter.password_hash, form.password.data):
+        username = form.username.data
+        password = form.password.data
+        
+        print(f"Admin login attempt for username: {username}")
+        
+        voter = Voter.query.filter_by(username=username).first()
+        
+        if not voter:
+            print(f"User '{username}' not found in database")
+            flash('Invalid username or password', 'error')
+            return render_template('admin_login.html', form=form)
+        
+        print(f"User found: {voter.username}, is_admin: {voter.is_admin}, is_active: {voter.is_active}")
+        
+        if check_password_hash(voter.password_hash, password):
             if not voter.is_admin:
+                print(f"User '{username}' is not an admin")
                 flash('Admin account required to access this area.', 'error')
                 return render_template('admin_login.html', form=form)
+            
+            if not voter.is_active:
+                print(f"Admin account '{username}' is inactive")
+                flash('Your account is inactive. Please contact administrator.', 'error')
+                return render_template('admin_login.html', form=form)
+            
             login_user(voter, remember=form.remember_me.data)
+            print(f"Admin {username} logged in successfully")
             next_page = request.args.get('next')
             return redirect(next_page or url_for('admin_elections'))
-        flash('Invalid username or password', 'error')
+        else:
+            print(f"Password check failed for admin user: {username}")
+            flash('Invalid username or password', 'error')
     
     return render_template('admin_login.html', form=form)
 
