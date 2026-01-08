@@ -66,9 +66,14 @@ class ProductionConfig(Config):
     # Production database (PostgreSQL recommended)
     # Normalize Render's postgres URL to SQLAlchemy's expected scheme
     _raw_db_url = os.environ.get('DATABASE_URL')
-    if _raw_db_url and _raw_db_url.startswith('postgres://'):
-        _raw_db_url = _raw_db_url.replace('postgres://', 'postgresql://', 1)
-    SQLALCHEMY_DATABASE_URI = _raw_db_url
+    if _raw_db_url:
+        if _raw_db_url.startswith('postgres://'):
+            _raw_db_url = _raw_db_url.replace('postgres://', 'postgresql://', 1)
+        SQLALCHEMY_DATABASE_URI = _raw_db_url
+    else:
+        # Fallback to SQLite if DATABASE_URL is not set (for local testing)
+        SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or \
+            'sqlite:///instance/voting_system.db'
     
     # Production security settings
     SESSION_COOKIE_SECURE = True

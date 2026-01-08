@@ -264,7 +264,11 @@ def index():
     active_elections = Election.query.filter_by(is_active=True).all()
     print(f"Found {len(active_elections)} active elections")
     
-    return render_template('index.html', elections=active_elections)
+    # Get total registered voters count
+    total_voters = Voter.query.count()
+    print(f"Total registered voters: {total_voters}")
+    
+    return render_template('index.html', elections=active_elections, total_voters=total_voters)
 
 @app.route('/ping')
 def ping():
@@ -540,7 +544,7 @@ def register():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    """Voter login"""
+    """Voter login with OTP authentication"""
     print("=== Login Route Called ===")
     
     if current_user.is_authenticated:
@@ -566,34 +570,19 @@ def login():
                 print(f"Voter found: {voter.username}, checking password...")
                 if check_password_hash(voter.password_hash, password):
                     print("Password check passed, logging in user...")
-                    
-                    # Login the user
+                    # Check if account is active
+                    if not voter.is_active:
+                        flash('Your account is inactive. Please contact administrator.', 'error')
+                        return render_template('login.html', form=form)
+
                     login_user(voter, remember=form.remember_me.data)
-                    
-                    print(f"User logged in successfully: {voter.username}")
-                    print(f"User ID: {voter.id}")
-                    print(f"User authenticated: {current_user.is_authenticated}")
-                    
-                    # Test if user is still authenticated after login_user
-                    print(f"User authenticated after login_user: {current_user.is_authenticated}")
-                    if current_user.is_authenticated:
-                        print(f"Current user after login: {current_user.username}")
-                        print(f"Current user ID after login: {current_user.id}")
-                    else:
-                        print("WARNING: User not authenticated after login_user!")
-                    
-                    # Check session
-                    print(f"Session ID: {session.get('_id', 'NOT SET')}")
-                    print(f"Session data: {dict(session)}")
-                    
-                    # Get next page or redirect to index
+
                     next_page = request.args.get('next')
                     if next_page:
-                        print(f"Redirecting to next page: {next_page}")
                         return redirect(next_page)
-                    else:
-                        print("Redirecting to index page")
-                        return redirect(url_for('index'))
+                    if voter.is_admin:
+                        return redirect(url_for('admin_elections'))
+                    return redirect(url_for('elections'))
                 else:
                     print("Password check failed")
                     flash('Invalid username or password', 'error')
@@ -606,6 +595,38 @@ def login():
     
     print("Rendering login template")
     return render_template('login.html', form=form)
+
+@app.route('/admin/login', methods=['GET', 'POST'])
+def admin_login():
+    """Admin-only login"""
+    if current_user.is_authenticated:
+        if current_user.is_admin:
+            return redirect(url_for('admin_elections'))
+        return redirect(url_for('index'))
+    form = LoginForm()
+    if request.method == 'POST' and form.validate_on_submit():
+        voter = Voter.query.filter_by(username=form.username.data).first()
+        if voter and check_password_hash(voter.password_hash, form.password.data):
+            if not voter.is_admin:
+                flash('Admin account required to access this area.', 'error')
+                try:
+                    return render_template('admin_login.html', form=form)
+                except Exception as e:
+                    print(f"Error rendering admin_login template (non-admin case): {e}")
+                    return "Template render error", 500
+            login_user(voter, remember=form.remember_me.data)
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('admin_elections'))
+        flash('Invalid username or password', 'error')
+    try:
+        return render_template('admin_login.html', form=form)
+    except Exception as e:
+        print(f"Error rendering admin_login template (GET): {e}")
+        import traceback; traceback.print_exc()
+        # Fallback to generic login template to avoid blocking
+        return render_template('login.html', form=form)
+
+# OTP routes removed: login now authenticates directly after password check
 
 @app.route('/logout')
 @login_required
@@ -960,6 +981,18 @@ def health_check():
 def api_blockchain():
     """API endpoint to get blockchain data"""
     return jsonify(blockchain.to_dict())
+
+@app.route('/api/stats')
+def api_stats():
+    """API endpoint to get statistics including voter count"""
+    try:
+        total_voters = Voter.query.count()
+        return jsonify({
+            'total_voters': total_voters,
+            'active_elections': Election.query.filter_by(is_active=True).count()
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/election/<election_id>/results')
 def api_election_results(election_id):

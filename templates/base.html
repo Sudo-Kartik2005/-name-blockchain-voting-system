@@ -26,6 +26,8 @@
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            position: relative; /* ensure proper stacking context */
+            z-index: 1050; /* above content */
         }
         
         .navbar-brand {
@@ -41,6 +43,8 @@
             padding: 30px;
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
+            position: relative;
+            z-index: 1; /* keep content below dropdown */
         }
         
         .card {
@@ -128,6 +132,11 @@
             margin-top: 50px;
             border-radius: 20px 20px 0 0;
         }
+
+        /* Ensure dropdown overlays the content below */
+        .dropdown-menu {
+            z-index: 2000;
+        }
     </style>
 </head>
 <body>
@@ -180,6 +189,11 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('login') }}">
                             <i class="fas fa-sign-in-alt me-1"></i>Login
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('admin_login') }}">
+                            <i class="fas fa-user-shield me-1"></i>Admin Login
                         </a>
                     </li>
                     <li class="nav-item">

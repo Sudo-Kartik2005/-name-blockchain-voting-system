@@ -125,6 +125,16 @@ def init_database(app):
     with app.app_context():
         try:
             print("Starting database initialization...")
+            
+            # Ensure instance directory exists for SQLite
+            db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+            if 'sqlite' in db_uri:
+                import os
+                instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
+                if not os.path.exists(instance_path):
+                    os.makedirs(instance_path)
+                    print(f"Created instance directory: {instance_path}")
+            
             db.create_all()
             print("Database tables created successfully")
             
@@ -213,5 +223,6 @@ def start_mining_thread(app, blockchain):
     mining_thread.start()
     print("Mining thread started")
 
-# For backward compatibility
-app = create_app()
+# For backward compatibility - only create app if not imported as module
+if __name__ == '__main__':
+    app = create_app()

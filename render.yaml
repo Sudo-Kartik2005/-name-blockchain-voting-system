@@ -4,7 +4,7 @@ services:
     env: python
     plan: free
     buildCommand: pip install --upgrade pip && pip install -r requirements.txt && pip install gunicorn psycopg2-binary
-    startCommand: gunicorn --config gunicorn.conf.py wsgi:application
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 60 --access-logfile - --error-logfile - --log-level info wsgi:application
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.0

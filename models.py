@@ -101,4 +101,26 @@ class PendingTransaction(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def __repr__(self):
-        return f'<PendingTransaction {self.id}>' 
+        return f'<PendingTransaction {self.id}>'
+
+class OTPCode(db.Model):
+    """Model for storing OTP codes for authentication"""
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    voter_id = db.Column(db.String(36), db.ForeignKey('voter.id'), nullable=False)
+    code = db.Column(db.String(6), nullable=False)  # 6-digit OTP code
+    purpose = db.Column(db.String(50), nullable=False)  # 'login', 'password_reset', etc.
+    is_used = db.Column(db.Boolean, default=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    ip_address = db.Column(db.String(45), nullable=True)  # Store IP for security
+    
+    # Relationship
+    voter = db.relationship('Voter', backref='otp_codes')
+    
+    def __repr__(self):
+        return f'<OTPCode {self.code} for {self.voter_id}>'
+    
+    def is_valid(self):
+        """Check if OTP is still valid (not used and not expired)"""
+        from datetime import datetime
+        return not self.is_used and datetime.utcnow() < self.expires_at 

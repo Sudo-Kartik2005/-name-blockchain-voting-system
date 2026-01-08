@@ -3,7 +3,12 @@ from wtforms import StringField, PasswordField, SubmitField, TextAreaField, Date
 from wtforms.validators import DataRequired, Length, EqualTo, ValidationError
 from models import Voter, Election, Candidate
 from datetime import datetime
-from wtforms.fields import DateTimeLocalField
+try:
+    # WTForms >=3 moved html5 fields under wtforms.fields
+    from wtforms.fields import DateTimeLocalField
+except Exception:
+    # WTForms 2.x provides html5 fields in a submodule
+    from wtforms.fields.html5 import DateTimeLocalField
 
 class RegistrationForm(FlaskForm):
     """Form for voter registration"""
@@ -89,3 +94,16 @@ class AdminForm(FlaskForm):
         ('export', 'Export Blockchain Data')
     ], validators=[DataRequired()])
     submit = SubmitField('Execute Action')
+
+class OTPForm(FlaskForm):
+    """Form for OTP verification"""
+    otp_code = StringField('OTP Code', validators=[
+        DataRequired(), 
+        Length(min=6, max=6, message='OTP code must be 6 digits')
+    ], render_kw={'placeholder': 'Enter 6-digit code', 'maxlength': '6', 'pattern': '[0-9]{6}'})
+    submit = SubmitField('Verify OTP')
+    
+    def validate_otp_code(self, otp_code):
+        """Validate that OTP contains only digits"""
+        if otp_code.data and not otp_code.data.isdigit():
+            raise ValidationError('OTP code must contain only numbers.')
