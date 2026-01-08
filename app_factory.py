@@ -70,7 +70,7 @@ def register_routes(app, blockchain):
         index, login, logout, register, register_simple,
         elections, election_detail, vote, results,
         # Admin routes
-        admin_elections, admin_candidates, edit_candidate,
+        admin_login, admin_elections, admin_candidates, edit_candidate,
         delete_candidate, admin_blockchain,
         # Test routes
         test_simple, test_route, test_db, test_session,
@@ -97,6 +97,7 @@ def register_routes(app, blockchain):
     app.add_url_rule('/results/<election_id>', 'results', results, methods=['GET'])
     
     # Admin routes
+    app.add_url_rule('/admin/login', 'admin_login', admin_login, methods=['GET', 'POST'])
     app.add_url_rule('/admin/elections', 'admin_elections', admin_elections, methods=['GET', 'POST'])
     app.add_url_rule('/admin/election/<election_id>/candidates', 'admin_candidates', admin_candidates, methods=['GET', 'POST'])
     app.add_url_rule('/admin/election/<election_id>/candidate/<candidate_id>/edit', 'edit_candidate', edit_candidate, methods=['GET', 'POST'])

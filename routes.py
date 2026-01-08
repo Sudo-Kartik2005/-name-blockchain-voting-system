@@ -147,6 +147,27 @@ def logout():
     logout_user()
     return redirect(url_for('login'))
 
+def admin_login():
+    """Admin-only login"""
+    if current_user.is_authenticated:
+        if current_user.is_admin:
+            return redirect(url_for('admin_elections'))
+        return redirect(url_for('index'))
+    
+    form = LoginForm()
+    if request.method == 'POST' and form.validate_on_submit():
+        voter = Voter.query.filter_by(username=form.username.data).first()
+        if voter and check_password_hash(voter.password_hash, form.password.data):
+            if not voter.is_admin:
+                flash('Admin account required to access this area.', 'error')
+                return render_template('admin_login.html', form=form)
+            login_user(voter, remember=form.remember_me.data)
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('admin_elections'))
+        flash('Invalid username or password', 'error')
+    
+    return render_template('admin_login.html', form=form)
+
 def elections():
     """List all elections"""
     if not current_user.is_authenticated:
