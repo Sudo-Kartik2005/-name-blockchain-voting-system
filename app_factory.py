@@ -126,8 +126,19 @@ def init_database(app):
         try:
             print("Starting database initialization...")
             
-            # Ensure instance directory exists for SQLite
+            # Log database URI (masked for security)
             db_uri = app.config.get('SQLALCHEMY_DATABASE_URI', '')
+            if db_uri:
+                # Mask password in URI for logging
+                if '@' in db_uri:
+                    masked_uri = db_uri.split('@')[0].split('://')[0] + '://***:***@' + '@'.join(db_uri.split('@')[1:])
+                else:
+                    masked_uri = db_uri
+                print(f"Database URI: {masked_uri}")
+            else:
+                print("WARNING: No database URI configured!")
+            
+            # Ensure instance directory exists for SQLite
             if 'sqlite' in db_uri:
                 import os
                 instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')

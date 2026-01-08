@@ -70,8 +70,13 @@ class ProductionConfig(Config):
         if _raw_db_url.startswith('postgres://'):
             _raw_db_url = _raw_db_url.replace('postgres://', 'postgresql://', 1)
         SQLALCHEMY_DATABASE_URI = _raw_db_url
+        print(f"[ProductionConfig] Using DATABASE_URL from environment: {_raw_db_url[:50]}...")
     else:
-        # Fallback to SQLite if DATABASE_URL is not set (for local testing)
+        # In production, DATABASE_URL should always be set
+        # Log warning but allow fallback for local testing
+        import warnings
+        warnings.warn('WARNING: DATABASE_URL not set in production! Falling back to SQLite.')
+        print("[ProductionConfig] WARNING: DATABASE_URL not set! Using SQLite fallback.")
         SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or \
             'sqlite:///instance/voting_system.db'
     
