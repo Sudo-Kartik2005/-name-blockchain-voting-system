@@ -60,7 +60,9 @@ def create_new_admin():
         print("\n📋 Login Credentials:")
         print("   Username: newadmin")
         print("   Password: 123456")
-        print("\n🌐 Go to http://localhost:8080 and login with these credentials")
+        print("\n🌐 Login URL: Check your Render app URL")
+        print("   Example: https://your-app.onrender.com/login")
+        print("\n⚠️  SECURITY WARNING: Change password after first login!")
 
 if __name__ == "__main__":
     create_new_admin() 
