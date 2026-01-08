@@ -28,18 +28,46 @@ Your repository is already ready with all necessary files:
 3. Sign up with GitHub (recommended)
 4. Verify your email
 
-### **Step 3: Deploy Your App**
+### **Step 3: Deploy Your App (Manual Method - Free Tier)**
 
-1. **Click "New +" → "Blueprint"**
-2. **Connect your GitHub repository**
-3. **Select your repository**: `Sudo-Kartik2005/-name-blockchain-voting-system`
-4. **Click "Apply"**
+Since Blueprint is a paid feature, follow these manual steps:
+
+**3.1: Create PostgreSQL Database**
+1. Click "New +" → "PostgreSQL"
+2. Name: `voting-system-db`
+3. Plan: Free
+4. Click "Create Database"
+5. **Copy the Internal Database URL** (you'll need it)
+
+**3.2: Create Web Service**
+1. Click "New +" → "Web Service"
+2. Connect your GitHub repository
+3. Select your repository: `your-username/blockchain-voting-system`
+4. Configure:
+   - **Name**: `blockchain-voting-system`
+   - **Environment**: `Python 3`
+   - **Build Command**: `pip install --upgrade pip && pip install -r requirements-prod.txt`
+   - **Start Command**: `gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 60 --access-logfile - --error-logfile - wsgi:application`
+   - **Plan**: Free
+5. Click "Create Web Service"
+
+**3.3: Link Database**
+1. In your Web Service → "Environment" tab
+2. Click "Link Database"
+3. Select `voting-system-db`
+4. This automatically sets `DATABASE_URL`
+
+**3.4: Set Environment Variables**
+In "Environment" tab, add:
+- `FLASK_ENV` = `production`
+- `SECRET_KEY` = (Click "Generate" or use secure random string)
+- `PYTHON_VERSION` = `3.12.0`
+- `BLOCKCHAIN_MINING_INTERVAL` = `10`
 
 Render will automatically:
-- ✅ Create a PostgreSQL database
-- ✅ Set up environment variables
-- ✅ Deploy your web service
 - ✅ Configure HTTPS
+- ✅ Set up health checks
+- ✅ Enable auto-deploy on git push
 
 ### **Step 4: Monitor Deployment**
 

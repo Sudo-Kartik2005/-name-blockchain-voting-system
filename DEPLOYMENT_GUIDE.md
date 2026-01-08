@@ -24,10 +24,11 @@ Before deploying, ensure you have:
 2. **Verify these files exist:**
    - ✅ `requirements-prod.txt` - Production dependencies
    - ✅ `wsgi.py` - WSGI entry point
-   - ✅ `render.yaml` - Render configuration
    - ✅ `app_factory.py` - Application factory
    - ✅ `gunicorn.conf.py` - Gunicorn configuration
    - ✅ `config.py` - Configuration management
+   
+   **Note**: `render.yaml` is only for Blueprint (paid feature) - not needed for manual deployment
 
 ### Step 2: Create Render Account
 
@@ -36,47 +37,60 @@ Before deploying, ensure you have:
 3. Sign up with GitHub (recommended for easy deployment)
 4. Verify your email address
 
-### Step 3: Deploy Using Blueprint
+### Step 3: Manual Deployment (Free Tier Method)
 
-1. **In Render Dashboard:**
-   - Click "New +" → "Blueprint"
-   - Connect your GitHub account if not already connected
-   - Select your repository: `your-username/blockchain-voting-system`
-   - Click "Apply"
+Since Blueprint is a paid feature, we'll deploy manually:
 
-2. **Render will automatically:**
-   - ✅ Create a PostgreSQL database
-   - ✅ Set up environment variables
-   - ✅ Deploy your web service
-   - ✅ Configure HTTPS
-
-### Step 4: Manual Deployment (Alternative)
-
-If you prefer manual setup:
-
-1. **Create PostgreSQL Database:**
-   - Go to "New +" → "PostgreSQL"
-   - Name: `voting-system-db`
-   - Plan: Free
+1. **Create PostgreSQL Database First:**
+   - Go to Render Dashboard
+   - Click "New +" → "PostgreSQL"
+   - Configure:
+     - **Name**: `voting-system-db`
+     - **Database**: `voting_system` (optional)
+     - **User**: `voting_user` (optional)
+     - **Plan**: Free
    - Click "Create Database"
+   - **Important**: Copy the "Internal Database URL" - you'll need it later
 
 2. **Create Web Service:**
-   - Go to "New +" → "Web Service"
-   - Connect your GitHub repository
-   - Configure:
+   - Go to Render Dashboard
+   - Click "New +" → "Web Service"
+   - Connect your GitHub account if not already connected
+   - Select your repository: `your-username/blockchain-voting-system`
+   - Configure the service:
      - **Name**: `blockchain-voting-system`
+     - **Region**: Choose closest to you
+     - **Branch**: `main` (or your main branch)
+     - **Root Directory**: (leave empty if root)
      - **Environment**: `Python 3`
-     - **Build Command**: `pip install --upgrade pip && pip install -r requirements-prod.txt`
-     - **Start Command**: `gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 60 wsgi:application`
+     - **Build Command**: 
+       ```
+       pip install --upgrade pip && pip install -r requirements-prod.txt
+       ```
+     - **Start Command**: 
+       ```
+       gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 60 --access-logfile - --error-logfile - wsgi:application
+       ```
      - **Plan**: Free
+   - Click "Create Web Service"
 
-3. **Set Environment Variables:**
-   - `FLASK_ENV`: `production`
-   - `SECRET_KEY`: (Generate a secure random key)
-   - `DATABASE_URL`: (Auto-set from PostgreSQL database)
-   - `PYTHON_VERSION`: `3.12.0`
+3. **Link Database to Web Service:**
+   - In your Web Service dashboard
+   - Go to "Environment" tab
+   - Click "Link Database"
+   - Select your `voting-system-db` database
+   - This automatically sets `DATABASE_URL` environment variable
 
-### Step 5: Monitor Deployment
+4. **Set Additional Environment Variables:**
+   - Still in "Environment" tab
+   - Click "Add Environment Variable" for each:
+     - **Key**: `FLASK_ENV`, **Value**: `production`
+     - **Key**: `SECRET_KEY`, **Value**: (Click "Generate" or use a secure random string)
+     - **Key**: `PYTHON_VERSION`, **Value**: `3.12.0`
+     - **Key**: `BLOCKCHAIN_MINING_INTERVAL`, **Value**: `10`
+   - **Note**: `DATABASE_URL` is automatically set when you link the database
+
+### Step 4: Monitor Deployment
 
 1. **Watch Build Logs:**
    - Monitor the build process in Render dashboard
@@ -92,6 +106,26 @@ If you prefer manual setup:
    - `/health` - Health check
    - `/register` - Registration page
    - `/login` - Login page
+
+### Step 5: Verify Deployment
+
+After the build completes:
+
+1. **Check Build Logs:**
+   - Look for "Build successful" message
+   - Verify all dependencies installed correctly
+   - Check for any warnings
+
+2. **Check Runtime Logs:**
+   - Switch to "Logs" tab
+   - Look for "Application startup complete"
+   - Verify database connection messages
+   - Check for "Database initialization completed successfully"
+
+3. **Test Health Endpoint:**
+   - Your app URL will be: `https://blockchain-voting-system.onrender.com`
+   - Visit: `https://your-app-name.onrender.com/health`
+   - Should return: `{"status": "healthy", "database": "connected"}`
 
 ## 🔧 Post-Deployment Configuration
 
@@ -160,7 +194,7 @@ python test_services.py
    - Ensure database credentials are correct
 
 3. **App Not Starting:**
-   - Check startup command in `render.yaml`
+   - Check startup command in Render dashboard (should match the one in Step 3.2)
    - Verify `wsgi.py` exists and is correct
    - Check application logs for errors
 
