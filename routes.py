@@ -58,30 +58,87 @@ def ping():
 
 def register_simple():
     """Simple registration form"""
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
     if request.method == 'POST':
+        # Get all form data
         username = request.form.get('username')
-        password = request.form.get('password')
         email = request.form.get('email')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+        first_name = request.form.get('first_name')
+        last_name = request.form.get('last_name')
+        date_of_birth = request.form.get('date_of_birth')
+        voter_id = request.form.get('voter_id')
         
-        if not username or not password or not email:
-            flash('All fields are required', 'error')
+        # Basic validation
+        if not all([username, email, password, confirm_password, first_name, last_name, date_of_birth, voter_id]):
+            flash('All fields are required.', 'error')
+            return render_template('register_simple.html')
+        
+        if password != confirm_password:
+            flash('Passwords do not match.', 'error')
+            return render_template('register_simple.html')
+        
+        if len(password) < 6:
+            flash('Password must be at least 6 characters long.', 'error')
+            return render_template('register_simple.html')
+        
+        if len(username) < 3:
+            flash('Username must be at least 3 characters long.', 'error')
+            return render_template('register_simple.html')
+        
+        # Email validation
+        import re
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(pattern, email):
+            flash('Please enter a valid email address.', 'error')
+            return render_template('register_simple.html')
+        
+        # Date validation
+        try:
+            from datetime import date, datetime
+            dob = date.fromisoformat(date_of_birth) if '-' in date_of_birth else datetime.strptime(date_of_birth, '%Y-%m-%d').date()
+            if dob > datetime.now().date():
+                flash('Date of birth cannot be in the future.', 'error')
+                return render_template('register_simple.html')
+        except (ValueError, TypeError):
+            flash('Please enter a valid date of birth (YYYY-MM-DD).', 'error')
             return render_template('register_simple.html')
         
         # Check if user already exists
-        existing_user = Voter.query.filter_by(username=username).first()
-        if existing_user:
-            flash('Username already exists', 'error')
+        existing_voter = Voter.query.filter_by(username=username).first()
+        if existing_voter:
+            flash('Username already taken. Please choose a different one.', 'error')
             return render_template('register_simple.html')
         
-        # Create new user
-        new_voter = Voter(
-            username=username,
-            email=email,
-            password_hash=generate_password_hash(password),
-            is_admin=False
-        )
+        existing_email = Voter.query.filter_by(email=email).first()
+        if existing_email:
+            flash('Email already registered. Please use a different one.', 'error')
+            return render_template('register_simple.html')
         
+        existing_voter_id = Voter.query.filter_by(voter_id=voter_id).first()
+        if existing_voter_id:
+            flash('Voter ID already registered.', 'error')
+            return render_template('register_simple.html')
+        
+        # Create new user with all required fields
         try:
+            from datetime import date, datetime
+            dob = date.fromisoformat(date_of_birth) if '-' in date_of_birth else datetime.strptime(date_of_birth, '%Y-%m-%d').date()
+            
+            new_voter = Voter(
+                username=username,
+                email=email,
+                password_hash=generate_password_hash(password),
+                first_name=first_name,
+                last_name=last_name,
+                date_of_birth=dob,
+                voter_id=voter_id,
+                is_admin=False
+            )
+            
             db.session.add(new_voter)
             db.session.commit()
             flash('Registration successful! Please log in.', 'success')
@@ -95,6 +152,9 @@ def register_simple():
 
 def register():
     """Full registration form"""
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
     form = RegistrationForm()
     if form.validate_on_submit():
         # Check if user already exists
@@ -103,15 +163,29 @@ def register():
             flash('Username already exists', 'error')
             return render_template('register.html', form=form)
         
-        # Create new user
-        new_voter = Voter(
-            username=form.username.data,
-            email=form.email.data,
-            password_hash=generate_password_hash(form.password.data),
-            is_admin=False
-        )
+        existing_email = Voter.query.filter_by(email=form.email.data).first()
+        if existing_email:
+            flash('Email already registered. Please use a different one.', 'error')
+            return render_template('register.html', form=form)
         
+        existing_voter_id = Voter.query.filter_by(voter_id=form.voter_id.data).first()
+        if existing_voter_id:
+            flash('Voter ID already registered.', 'error')
+            return render_template('register.html', form=form)
+        
+        # Create new user with all required fields
         try:
+            new_voter = Voter(
+                username=form.username.data,
+                email=form.email.data,
+                password_hash=generate_password_hash(form.password.data),
+                first_name=form.first_name.data,
+                last_name=form.last_name.data,
+                date_of_birth=form.date_of_birth.data,
+                voter_id=form.voter_id.data,
+                is_admin=False
+            )
+            
             db.session.add(new_voter)
             db.session.commit()
             flash('Registration successful! Please log in.', 'success')
