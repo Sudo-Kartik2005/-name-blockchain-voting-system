@@ -17,22 +17,54 @@ The `DATABASE_URL` environment variable is not set or the database is not linked
    - Plan: Free
    - Click "Create Database"
 
-### Step 2: Link Database to Web Service
-1. Go to your **Web Service** dashboard
-2. Click on **"Environment"** tab
-3. Scroll down to **"Link Database"** section
-4. Click **"Link Database"**
-5. Select your `voting-system-db` database
-6. This automatically sets `DATABASE_URL` environment variable ✅
+### Step 2: Set DATABASE_URL Manually (If "Link Database" option is not available)
+
+**Option A: Manual Environment Variable Setup**
+
+1. Go to your **PostgreSQL Database** dashboard (`voting-system-db`)
+2. Find the **"Connection"** or **"Info"** section
+3. Copy the **"Internal Database URL"** (NOT External URL)
+   - It should look like: `postgres://user:password@hostname:port/dbname`
+   - Or: `postgresql://user:password@hostname:port/dbname`
+4. Go to your **Web Service** dashboard
+5. Click on **"Environment"** tab
+6. Click **"Add Environment Variable"**
+7. Set:
+   - **Key**: `DATABASE_URL`
+   - **Value**: Paste the Internal Database URL you copied
+8. **Important**: If the URL starts with `postgres://`, change it to `postgresql://`
+   - Example: `postgres://...` → `postgresql://...`
+9. Click **"Save Changes"**
+
+**Option B: Using Connection String Components**
+
+If you can't find the full URL, you can construct it manually:
+
+1. From your PostgreSQL database dashboard, note:
+   - **Host**: (internal hostname)
+   - **Port**: (usually 5432)
+   - **Database**: (database name)
+   - **User**: (username)
+   - **Password**: (password)
+
+2. Format: `postgresql://USER:PASSWORD@HOST:PORT/DATABASE`
+
+3. Add as environment variable `DATABASE_URL` with this value
 
 ### Step 3: Verify DATABASE_URL is Set
-1. Still in **"Environment"** tab
+1. In your **Web Service** → **"Environment"** tab
 2. Look for `DATABASE_URL` in the environment variables list
 3. It should show something like: `postgresql://user:pass@host:port/dbname`
-4. If it's NOT there, the database is not linked properly
+4. Make sure it starts with `postgresql://` (not `postgres://`)
 
-### Step 4: Manual Check (if needed)
-If `DATABASE_URL` is still not set after linking:
+### Step 4: Alternative - Link Database (if option appears)
+Some Render accounts have a "Link Database" option:
+1. Go to **Web Service** → **"Environment"** tab
+2. Scroll down to **"Link Database"** section (if visible)
+3. Click **"Link Database"**
+4. Select your `voting-system-db` database
+
+If this option is not available, use Option A above.
 
 1. Go to your **PostgreSQL database** dashboard
 2. Copy the **"Internal Database URL"** (not External)
