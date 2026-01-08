@@ -11,13 +11,19 @@ from datetime import datetime
 # Add the current directory to Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app import app, db
-from models import Voter
+import os
+import sys
+from app_factory import create_app
+from models import Voter, db
 from werkzeug.security import generate_password_hash
+from datetime import datetime
 
 def create_new_admin():
     """Create a new admin user"""
     print("🔧 Creating new admin user...")
+    
+    # Create app instance (works for both local and Render)
+    app = create_app()
     
     with app.app_context():
         # Check if admin already exists
