@@ -6,7 +6,7 @@ Flask-WTF==1.2.2
 
 # Database dependencies
 SQLAlchemy==2.0.41
-psycopg2-binary>=2.9.10  # PostgreSQL adapter (Python 3.13 compatible)
+psycopg2-binary==2.9.9  # PostgreSQL adapter (use Python 3.12 for compatibility)
 greenlet==3.2.3
 
 # WSGI server for production
