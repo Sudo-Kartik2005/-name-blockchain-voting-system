@@ -68,7 +68,7 @@ Still in **"Environment"** tab, click **"Add Environment Variable"** for each:
 |-----|-------|
 | `FLASK_ENV` | `production` |
 | `SECRET_KEY` | Click **"Generate"** button (or use a secure random string) |
-| `PYTHON_VERSION` | `3.12.0` |
+| `PYTHON_VERSION` | `3.12.0` (or `3.13.4` - Render's default) |
 | `BLOCKCHAIN_MINING_INTERVAL` | `10` |
 
 **Note**: `DATABASE_URL` is automatically set when you link the database - don't add it manually!
