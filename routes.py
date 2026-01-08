@@ -204,14 +204,40 @@ def login():
     
     form = LoginForm()
     if form.validate_on_submit():
-        voter = Voter.query.filter_by(username=form.username.data).first()
-        if voter and check_password_hash(voter.password_hash, form.password.data):
+        username = form.username.data
+        password = form.password.data
+        
+        print(f"Login attempt for username: {username}")
+        
+        voter = Voter.query.filter_by(username=username).first()
+        
+        if not voter:
+            print(f"User '{username}' not found in database")
+            flash('Invalid username or password', 'error')
+            return render_template('login.html', form=form)
+        
+        print(f"User found: {voter.username}, is_active: {voter.is_active}, is_admin: {voter.is_admin}")
+        
+        # Check password
+        if check_password_hash(voter.password_hash, password):
+            # Check if account is active
+            if not voter.is_active:
+                flash('Your account is inactive. Please contact administrator.', 'error')
+                return render_template('login.html', form=form)
+            
             login_user(voter, remember=form.remember_me.data)
+            print(f"User {username} logged in successfully")
+            
             next_page = request.args.get('next')
             if not next_page or not next_page.startswith('/'):
-                next_page = url_for('elections')
+                # Redirect admin users to admin panel
+                if voter.is_admin:
+                    next_page = url_for('admin_elections')
+                else:
+                    next_page = url_for('elections')
             return redirect(next_page)
         else:
+            print(f"Password check failed for user: {username}")
             flash('Invalid username or password', 'error')
     
     return render_template('login.html', form=form)
